@@ -1,133 +1,77 @@
-﻿var dir_home = "";
-var loads = false;
-var count_ts = 1;
-	
-var time1 = 0;	
-	
+﻿//путь до файла со списком плейлистов
+var pathPlaylists = "";
+//путь до плейлиста
+var pathPlaylist = "";
 
+//семафор для последовательной загрузки медиа файлов
+var loads = false;
+
+//количество медиа файлов в плейлисте
+var countMediaFiles = 1;
+
+//время начала и конца операции скачивания медиа файла
+var timeStart = 0;	
+var timeStop = 0;	
 	
-function getXmlHttp()
+//ссылка на файл плейлистов
+var linkToPlaylists = "";	
+	
+function GetXmlHttp()
 {
-	var xmlhttp;
+	var xmlHttp;
 	try 
 	{
-		xmlhttp = new ActiveXObject("Msxml2.XMLHTTP");
-	} catch (e) {
-    try {
-      xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
-    } catch (E) {
-      xmlhttp = false;
-    }
+		xmlHttp = new ActiveXObject("Msxml2.XMLHTTP");
 	}
-	if (!xmlhttp && typeof XMLHttpRequest!='undefined') {
-	xmlhttp = new XMLHttpRequest();
+	catch (e)
+	{
+		try 
+		{
+			xmlHttp = new ActiveXObject("Microsoft.XMLHTTP");
+		} 
+		catch (E) 
+		{
+			xmlHttp = false;
+		}
 	}
-	return xmlhttp;
+	if (!xmlHttp && 
+		typeof XMLHttpRequest != 'undefined') 
+	{
+		xmlHttp = new XMLHttpRequest();
+	}
+	return xmlHttp;
 }
 
-	
-function f1() 
+//получить список плейлистов 
+function GetPlaylists() 
 {
-	var l = document.getElementById('pl').value;
-	if(l.length > 0)
+	//ссылка на файл плейлистов
+	linkToPlaylists = document.getElementById('Playlists').value;
+	if(linkToPlaylists.length > 0)
 	{
-		
-		if(l.indexOf("http://") == -1 && l.indexOf("https://") == -1)
+		if(linkToPlaylists.indexOf("http://") == -1 && 
+		   linkToPlaylists.indexOf("https://") == -1)
 		{
-			l = "http://" + l;			
+			linkToPlaylists = "http://" + linkToPlaylists;			
 		}
-		count_ts = 1;
-		//получить директорию
-		var home = l;
-		while(home.charAt(home.length - 1) != "/")
+		countMediaFiles = 1;
+		//получить директорию файла с плейлистами
+		pathPlaylists = linkToPlaylists;
+		while(pathPlaylists.charAt(pathPlaylists.length - 1) != "/")
 		{
-			home = home.substring(0, home.length - 1);
+			pathPlaylists = pathPlaylists.substring(0, pathPlaylists.length - 1);
 		}
-		dir_home = home;
 		
-		var req = getXmlHttp();
-		req.onreadystatechange = function() 
-		{ 
-			
+		var request = GetXmlHttp();
+		request.onreadystatechange = function() 
+		{ 		
 			// onreadystatechange активируется при получении ответа сервера
-			if (req.readyState == 4) {
+			if (request.readyState == 4) {
 				// если запрос закончил выполняться
-				if(req.status == 200) 
+				if(request.status == 200) 
 				{
-					var response = req.responseText;
-				
-					if(response.length > 0)
-					{
-						if(response.indexOf("#EXT-X-STREAM-INF") != -1)
-						{
-							//разделим на строки
-							var a = new Array();
-							var i = 0;
-							while(response.indexOf('\n') != -1)
-							{
-								a[i] = response.substr(0,response.indexOf('\n'));
-								response = response.substr(response.indexOf('\n') + 1);					
-								i++;				
-							}
-							
-							//преобразуем в удобный вид
-							var str = "";
-							var BW = new Array();
-							var link = new Array();
-							var x = 0;
-							for (var j = 0; j < a.length; j++) 
-							{
-								//найден файл в плейлисте
-								if(a[j].indexOf("#EXT-X-STREAM-INF") != -1)
-								{
-									var str_temp = "";
-									a[j] = a[j].substr(a[j].indexOf("BANDWIDTH=") + 10);
-									if(a[j].indexOf(",") != -1) 
-									{
-										a[j] = a[j].substr(0, a[j].indexOf(","));
-									}
-									
-									BW[x] = parseInt(a[j],10);
-									j++;
-									if(a[j].length == 0) j++;
-									link[x] = a[j];
-									
-									str += BW[x] + "<br>" + link[x] + "<br>";
-									x++;
-								}				
-							}
-							
-							//поиск максимального качества
-							var max_index = 0;
-							if(BW.length > 0)
-							{					
-								for (var k = 1; k < BW.length; k++) 
-								{
-									if(BW[k] > BW[max_index]) max_index = k;
-								}
-							}
-							
-							if(link[max_index].indexOf("http://") != -1)
-							{
-								f2(link[max_index]);
-							}
-							else
-							{
-								f2(dir_home + link[max_index]);
-							}
-						}
-						else
-						{
-							if(response.indexOf("#EXTINF") != -1)
-							{
-								f2(l);
-							}
-							else
-							{
-								document.getElementById('info').innerHTML = "Указанный файл не является плейлистом.";
-							}
-						}
-					}													
+					var response = request.responseText;				
+					FindPlaylist(response);																		
 				}
 				else
 				{
@@ -136,33 +80,102 @@ function f1()
 			}
 		}
 		
-		req.open('GET', l, true);
-		req.send(null);
+		request.open('GET', linkToPlaylists, true);
+		request.send(null);
 	}
-
 }
 
-
-function f2(l) 
+//найти плейлист с наибольшим битрейтом
+function FindPlaylist(playlists)
 {
-	var home = l;
-	while(home.charAt(home.length - 1) != "/")
+	if(playlists.length > 0)
 	{
-		home = home.substring(0, home.length - 1);
-	}
-	dir_home = home;
-	
-    var req = getXmlHttp();
-
-    req.onreadystatechange = function() 
-	{ 
-		
-        // onreadystatechange активируется при получении ответа сервера
-        if (req.readyState == 4) {
-            // если запрос закончил выполняться
-            if(req.status == 200) 
+		if(playlists.indexOf("#EXT-X-STREAM-INF") != -1)
+		{
+			//разделим на строки и упорядочим в массив
+			var arrayPlaylists = new Array();
+			var i = 0;//номер строки
+			while(playlists.indexOf('\n') != -1)
 			{
-				var response = req.responseText;
+				arrayPlaylists[i] = playlists.substr(0,playlists.indexOf('\n'));
+				playlists = playlists.substr(playlists.indexOf('\n') + 1);					
+				i++;				
+			}
+			
+			//преобразуем в удобный вид
+			var bandwidth = new Array();//хранит качество
+			var link = new Array();//хранит ссылку
+			var nomerPlaylist = 0;//номер плейлиста
+			for (var j = 0; j < arrayPlaylists.length; j++) 
+			{
+				//найден файл в плейлисте
+				if(arrayPlaylists[j].indexOf("#EXT-X-STREAM-INF") != -1)
+				{
+					arrayPlaylists[j] = arrayPlaylists[j].substr(arrayPlaylists[j].indexOf("BANDWIDTH=") + 10);
+					if(arrayPlaylists[j].indexOf(",") != -1) 
+					{
+						arrayPlaylists[j] = arrayPlaylists[j].substr(0, arrayPlaylists[j].indexOf(","));
+					}				
+					bandwidth[nomerPlaylist] = parseInt(arrayPlaylists[j],10);
+					j++;
+					if(arrayPlaylists[j].length == 0) j++;
+					link[nomerPlaylist] = arrayPlaylists[j];
+					nomerPlaylist++;
+				}				
+			}
+			
+			//поиск максимального качества
+			var maxIndex = 0;
+			if(bandwidth.length > 0)
+			{					
+				for (var k = 1; k < bandwidth.length; k++) 
+				{
+					if(bandwidth[k] > bandwidth[maxIndex]) maxIndex = k;
+				}
+			}
+			//проверим абсолютный путь в ссылке до плейлиста
+			if(link[maxIndex].indexOf("http://") != -1)
+			{
+				GetPlaylist(link[maxIndex]);
+			}
+			else
+			{
+				GetPlaylist(pathPlaylists + link[maxIndex]);
+			}
+		}
+		else
+		{
+			if(playlists.indexOf("#EXTINF") != -1)
+			{
+				//заданный пользователем URL содержит уже конкретный плейлист
+				GetPlaylist(linkToPlaylists);
+			}
+			else
+			{
+				document.getElementById('info').innerHTML = "Указанный файл не является плейлистом.";
+			}
+		}
+	}
+}
+
+//получим конкретный плейлист
+function GetPlaylist(link) 
+{
+	pathPlaylist = link;
+	while(pathPlaylist.charAt(pathPlaylist.length - 1) != "/")
+	{
+		pathPlaylist = pathPlaylist.substring(0, pathPlaylist.length - 1);
+	}
+	
+    var request = GetXmlHttp();
+    request.onreadystatechange = function() 
+	{ 	
+        // onreadystatechange активируется при получении ответа сервера
+        if (request.readyState == 4) {
+            // если запрос закончил выполняться
+            if(request.status == 200) 
+			{
+				var response = request.responseText;
 			
 				if(response.length > 0)
 				{
@@ -179,23 +192,22 @@ function f2(l)
 						}
 						
 						//преобразуем в удобный вид
-						var str = "";
-						var links = new Array();
-						var x = 0;
+						var linksToMediaFiles = new Array();
+						var nomerMediaFile = 0;//номер медиа файла
 						for (var j = 0; j < a.length; j++) 
 						{
 							//найден файл в плейлисте
 							if(a[j].indexOf("#EXTINF") != -1)
 							{
 								j++;
-								links[x] = a[j];
-								x++;
+								linksToMediaFiles[nomerMediaFile] = a[j];
+								nomerMediaFile++;
 							}				
 						}
 																																	
-						document.getElementById('info').innerHTML = "Количество TS файлов в плейлисте: " + links.length;
+						document.getElementById('info').innerHTML = "Количество TS файлов в плейлисте: " + linksToMediaFiles.length;
 						
-						
+						//запишем данные в таблицу
 						var newElem=document.createElement("table");
 						var newRow=newElem.insertRow(0);
 						
@@ -212,32 +224,30 @@ function f2(l)
 						newCell.innerHTML="<b>скорость скачивания</b>";
 						
 						document.body.appendChild(newElem);
-						
-						
-						var k = 0;
+												
+						var k = 0;//счтёчик закаченных файлов
 						(function() {
-							if (k < links.length) 
+							if (k < linksToMediaFiles.length) 
 							{
+								//семафор
 								if(loads == false)
 								{
-									time1 = Date.now();
+									timeStart = Date.now();
 
-									if(links[k].indexOf("http://") != -1)
+									if(linksToMediaFiles[k].indexOf("http://") != -1)
 									{
-										f3(links[k]);
+										GetMediaFile(linksToMediaFiles[k]);
 									}
 									else
 									{
-										f3(dir_home + links[k]);
+										GetMediaFile(pathPlaylist + linksToMediaFiles[k]);
 									}
 									k++;
 								}
 								
 								setTimeout(arguments.callee, 1000);
 							} 
-						})();
-						
-											
+						})();							
 					}
 					else
 					{					
@@ -252,37 +262,36 @@ function f2(l)
         }
     }
 
-    req.open('GET', l, true); 
-    req.send(null); 
+    request.open('GET', link, true); 
+    request.send(null); 
 }
 
-function f3(l) 
+function GetMediaFile(l) 
 {
 	loads = true;
-    var req = getXmlHttp();
+    var request = GetXmlHttp();
 
-    req.onreadystatechange = function() 
+    request.onreadystatechange = function() 
 	{ 
-		
         // onreadystatechange активируется при получении ответа сервера
-        if (req.readyState == 4) {
+        if (request.readyState == 4) {
             // если запрос закончил выполняться
-            if(req.status == 200) 
+            if(request.status == 200) 
 			{
-				var response = req.responseText;
+				var response = request.responseText;
 			
 				if(response.length > 0)
 				{
 					var size = response.length;
-					var time2 = Date.now();
-					var v = Math.round((size * 8) / ((time2 - time1) / 1000));
+					timeStop = Date.now();
+					var v = Math.round((size * 8) / ((timeStop - timeStart) / 1000));
 					
 					var newElem=document.createElement("table");
 					var newRow=newElem.insertRow(0);
 					
 					var newCell = newRow.insertCell(0);
 					newCell.width="250";
-					newCell.innerHTML="<b>" + count_ts + "</b>";
+					newCell.innerHTML="<b>" + countMediaFiles + "</b>";
 					
 					var newCell = newRow.insertCell(1);
 					newCell.width="200";
@@ -295,8 +304,7 @@ function f3(l)
 					document.body.appendChild(newElem);
 				}
 				loads = false;
-				count_ts++;
-				
+				countMediaFiles++;			
             }
 			else
 			{
@@ -305,7 +313,6 @@ function f3(l)
 			}
         }
     }
-
-    req.open('GET', l, true); 
-    req.send(null); 
+    request.open('GET', l, true); 
+    request.send(null); 
 }
