@@ -122,6 +122,10 @@ function f1()
 							{
 								f2(l);
 							}
+							else
+							{
+								document.getElementById('info').innerHTML = "Указанный файл не является плейлистом.";
+							}
 						}
 					}													
 				}
