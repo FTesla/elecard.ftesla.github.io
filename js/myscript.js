@@ -4,29 +4,7 @@ var count_ts = 1;
 	
 var time1 = 0;	
 	
-function newf() 
-{
-	/*$.ajax({
-     url:"http://qthttp.apple.com.edgesuite.net/1010qwoeiuryfg/sl.m3u8",
-     dataType: 'jsonp', // Notice! JSONP <-- P (lowercase)
-     success:function(json){
-         // do stuff with json (in this case an array)
-         alert("Success");
-     },
-     error:function(){
-         alert("Error");
-     }      
-	});*/
-	
-	$.ajax({
-	url: "http://77.106.85.14/playlists/First/index.m3u8",
-	success: function(data)
-	{
-		alert( "Прибыли данные: " + data );
-	}
-	});
-}	
-	
+
 	
 function getXmlHttp()
 {
@@ -50,11 +28,17 @@ function getXmlHttp()
 	
 function f1() 
 {
-	if(document.getElementById('pl').value.length > 0)
+	var l = document.getElementById('pl').value;
+	if(l.length > 0)
 	{
+		
+		if(l.indexOf("http://") == -1 && l.indexOf("https://") == -1)
+		{
+			l = "http://" + l;			
+		}
 		count_ts = 1;
 		//получить директорию
-		var home = document.getElementById('pl').value;
+		var home = l;
 		while(home.charAt(home.length - 1) != "/")
 		{
 			home = home.substring(0, home.length - 1);
@@ -136,22 +120,20 @@ function f1()
 						{
 							if(response.indexOf("#EXTINF") != -1)
 							{
-								f2(document.getElementById('pl').value);
+								f2(l);
 							}
 						}
 					}													
 				}
 				else
 				{
-					document.getElementById('info').innerHTML = "Ответ сервера: " + "error";
+					document.getElementById('info').innerHTML = "Плейлист не найден, пожалуйста, проверте введённый URL.";
 				}
 			}
 		}
-
-		req.open('GET', document.getElementById('pl').value, true); 
-		//req.open('GET',"/playlist.php?l=" + document.getElementById('pl').value, true); 
-
-		req.send(null); 
+		
+		req.open('GET', l, true);
+		req.send(null);
 	}
 
 }
@@ -255,23 +237,19 @@ function f2(l)
 					}
 					else
 					{					
-						document.getElementById('info').innerHTML = "некорректный плейлист/не найден плейлист";	
+						document.getElementById('info').innerHTML = "Некорректный плейлист/не найден плейлист.";	
 					}
 				}													
             }
 			else
 			{
-				document.getElementById('info').innerHTML = "Ответ сервера: " + "error";
+				document.getElementById('info').innerHTML = "Плейлист не найден, пожалуйста, проверте введённый URL.";
 			}
         }
     }
 
     req.open('GET', l, true); 
-	//req.open('GET', "/playlist.php?l=" + l, true); 
-
     req.send(null); 
-
-
 }
 
 function f3(l) 
@@ -318,14 +296,12 @@ function f3(l)
             }
 			else
 			{
-				document.getElementById('info').innerHTML = "Ответ сервера: " + "error";
+				document.getElementById('info').innerHTML = "Плейлист повреждён или отсутствуют медиа-файлы.";
 				loads = false;
 			}
         }
     }
 
     req.open('GET', l, true); 
-	//req.open('GET', "/get_ts.php?l=" + l, true); 
-
     req.send(null); 
 }
