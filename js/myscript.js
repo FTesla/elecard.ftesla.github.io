@@ -48,8 +48,7 @@ function GetPlaylists()
 	//ссылка на файл плейлистов
 	linkToPlaylists = document.getElementById('Playlists').value;
 	if(linkToPlaylists.length > 4)
-	{
-		
+	{		
 		//расширение плейлиста
 		if(linkToPlaylists.substr(-4) == 'm3u8')
 		{
@@ -70,7 +69,8 @@ function GetPlaylists()
 			request.onreadystatechange = function() 
 			{ 		
 				// onreadystatechange активируется при получении ответа сервера
-				if (request.readyState == 4) {
+				if (request.readyState == 4) 
+				{
 					// если запрос закончил выполняться
 					if(request.status == 200) 
 					{
@@ -89,25 +89,61 @@ function GetPlaylists()
 		}
 		else
 		{
-			//расширение видео
-			if (linkToPlaylists.substr(-4) == '.avi' ||
-				linkToPlaylists.substr(-4) == '.flv' ||
-				linkToPlaylists.substr(-4) == 'm2ts' ||
-				linkToPlaylists.substr(-4) == '.mov' ||
-				linkToPlaylists.substr(-4) == '.mp4' ||
-				linkToPlaylists.substr(-4) == '.mpg' ||
-				linkToPlaylists.substr(-4) == 'webm' ||
-				linkToPlaylists.substr(-4) == '.wmv'||
-				linkToPlaylists.substr(-4) == '.mkv')
+			//плейлист DASH
+			if(linkToPlaylists.substr(-4) == '.mpd')
 			{
+					
+				if(linkToPlaylists.indexOf("http://") == -1 && 
+					linkToPlaylists.indexOf("https://") == -1)
+				{
+					linkToPlaylists = "http://" + linkToPlaylists;			
+				}
+				var request = GetXmlHttp();
 				
-				document.getElementById('videoTag').setAttribute('src', linkToPlaylists);
-				document.getElementById('videoTag').load();
-				document.getElementById('videoTag').play();						
+				request.onreadystatechange = function() 
+				{ 		
+					// onreadystatechange активируется при получении ответа сервера
+					if (request.readyState == 4) 
+					{
+						// если запрос закончил выполняться
+						if(request.status == 200) 
+						{
+							setupVideo(linkToPlaylists);
+														
+						}
+						else
+						{
+							document.getElementById('info').innerHTML = "Плейлист не найден, пожалуйста, проверьте введённый URL.";
+						}
+					}
+				}
+				request.open('GET', linkToPlaylists, true);
+				request.send(null);
 			}
 			else
 			{
-				document.getElementById('info').innerHTML = "Плейлист/видеофайл не найден, пожалуйста, проверьте введённый URL.";
+				//расширение видео
+				if (linkToPlaylists.substr(-4) == '.avi' ||
+					linkToPlaylists.substr(-4) == '.flv' ||
+					linkToPlaylists.substr(-4) == 'm2ts' ||
+					linkToPlaylists.substr(-4) == '.mov' ||
+					linkToPlaylists.substr(-4) == '.mp4' ||
+					linkToPlaylists.substr(-4) == '.mpg' ||
+					linkToPlaylists.substr(-4) == 'webm' ||
+					linkToPlaylists.substr(-4) == '.wmv'||
+					linkToPlaylists.substr(-4) == '.mkv'||
+					linkToPlaylists.substr(-4) == '.raw'||
+					linkToPlaylists.substr(-4) == '.aac')
+				{
+					
+					document.getElementById('videoplayer').setAttribute('src', linkToPlaylists);
+					document.getElementById('videoplayer').load();
+					document.getElementById('videoplayer').play();						
+				}
+				else
+				{
+					document.getElementById('info').innerHTML = "Плейлист/видеофайл не найден, пожалуйста, проверьте введённый URL.";
+				}
 			}
 		}
 	}
@@ -294,7 +330,7 @@ function GetPlaylist(link)
     request.send(null); 
 }
 
-function GetMediaFile(l) 
+function GetMediaFile(link) 
 {
 	loads = true;
     var request = GetXmlHttp();
@@ -341,6 +377,16 @@ function GetMediaFile(l)
 			}
         }
     }
-    request.open('GET', l, true); 
+    request.open('GET', link, true); 
     request.send(null); 
+}
+
+function setupVideo(link) 
+{
+	var url = link;
+	var context = new Dash.di.DashContext();
+	var player = new MediaPlayer(context);
+	player.startup();
+	player.attachView(document.querySelector("#videoplayer"));
+	player.attachSource(url);
 }
