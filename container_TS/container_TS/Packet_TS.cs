@@ -17,6 +17,6 @@ namespace container_TS
         public int PointerData;
         public int ch;
 
-        public byte[] data = new byte[184];
+        public byte[] data = new byte[0];
     }
 }
