@@ -1,8 +1,0 @@
-C:\Users\admin\Google Drive\Projects2013\container_TS\container_TS\bin\Debug\container_TS.exe
-C:\Users\admin\Google Drive\Projects2013\container_TS\container_TS\bin\Debug\container_TS.pdb
-C:\Users\admin\Google Drive\Projects2013\container_TS\container_TS\obj\Debug\container_TS.csprojResolveAssemblyReference.cache
-C:\Users\admin\Google Drive\Projects2013\container_TS\container_TS\obj\Debug\container_TS.Form1.resources
-C:\Users\admin\Google Drive\Projects2013\container_TS\container_TS\obj\Debug\container_TS.Properties.Resources.resources
-C:\Users\admin\Google Drive\Projects2013\container_TS\container_TS\obj\Debug\container_TS.csproj.GenerateResource.Cache
-C:\Users\admin\Google Drive\Projects2013\container_TS\container_TS\obj\Debug\container_TS.exe
-C:\Users\admin\Google Drive\Projects2013\container_TS\container_TS\obj\Debug\container_TS.pdb
