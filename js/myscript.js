@@ -333,7 +333,7 @@ function GetPlaylist(link)
 function GetMediaFile(link) 
 {
 	loads = true;
-    var request = GetXmlHttp();
+    var request = new XMLHttpRequest();
 
     request.onreadystatechange = function() 
 	{ 
@@ -342,11 +342,11 @@ function GetMediaFile(link)
             // если запрос закончил выполняться
             if(request.status == 200) 
 			{
-				var response = request.responseText;
-			
-				if(response.length > 0)
+				var buffer = request.response;
+				var intArr = new Uint8Array(buffer);
+				if(intArr.length > 0)
 				{
-					var size = response.length;
+					var size = intArr.length;
 					timeStop = Date.now();
 					var v = Math.round((size * 8) / ((timeStop - timeStart) / 1000));
 					
@@ -366,6 +366,7 @@ function GetMediaFile(link)
 					newCell.innerHTML="<b>" + v + " бит/сек</b>";
 					
 					document.body.appendChild(newElem);
+					ExtractStream(intArr);
 				}
 				loads = false;
 				countMediaFiles++;			
@@ -378,6 +379,7 @@ function GetMediaFile(link)
         }
     }
     request.open('GET', link, true); 
+	request.responseType = "arraybuffer";
     request.send(null); 
 }
 
