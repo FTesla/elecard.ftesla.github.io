@@ -135,7 +135,9 @@ namespace container_TS
                     }
                 }
 
-                //выделим все потоки и сохраним (аудио 192-223, видо 224 - 239
+                //выделим все потоки и сохраним (аудио 192-223, видо 224 - 239)
+                int audioIndex = 0;
+                int videoIndex = 0;
                 for (int i = 0; i < streamIDs.Count; i++)
                 {
                     //аудио
@@ -145,8 +147,9 @@ namespace container_TS
                         //путь до файла сохранения
                         string filePathSaveAudio = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory) + @"\" + openFileDialog.SafeFileName + "_" + streamIDs[i] + ".mp4";
                         //File.WriteAllBytes(filePathSaveAudio, PackerMP4(ExtractStream(pTSs, PIDs[i], streamIDs[i])));
-                        File.WriteAllBytes(filePathSaveAudio, PackerMP4(ExtractStream(pTSs, PIDs[i], streamIDs[i])));
+                        //File.WriteAllBytes(filePathSaveAudio, PackerMP4(ExtractStream(pTSs, PIDs[i], streamIDs[i])));
                         //PackerMP4(ExtractStream(pTSs, PIDs[i], streamIDs[i]));
+                        audioIndex = i;
                     }
 
                     //видео
@@ -155,9 +158,13 @@ namespace container_TS
                     {
                         string filePathSaveVideo = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory) + @"\" + openFileDialog.SafeFileName + "_" + streamIDs[i] + ".raw";
                         //File.WriteAllBytes(filePathSaveVideo, ExtractStream(pTSs, PIDs[i], streamIDs[i]));
-                        ExtractStream(pTSs, PIDs[i], streamIDs[i]);
+                        //ExtractStream(pTSs, PIDs[i], streamIDs[i]);
+                        videoIndex = i;
                     }
                 }
+                string filePathSave = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory) + @"\" + openFileDialog.SafeFileName + "_" + "full.mp4";
+                File.WriteAllBytes(filePathSave, PackerMP4(ExtractStream(pTSs, PIDs[audioIndex], streamIDs[audioIndex]), ExtractStream(pTSs, PIDs[videoIndex], streamIDs[videoIndex])));
+
 
                 DT1 = DateTime.Now.Ticks;
                 //label1.Text = "Время обработки: " + ((DT1 - DT0) / 10000).ToString() + " миллисекунд";
@@ -166,7 +173,7 @@ namespace container_TS
         }
 
 
-        byte[] PackerMP4(byte[] audioClean)
+        byte[] PackerMP4(byte[] audioClean, byte[] videoClean)
         {
             //для подсчёта времени выполнения кода
             long DT0 = DateTime.Now.Ticks;
@@ -206,6 +213,42 @@ namespace container_TS
             }
             sampleCount = sizeSamples.Length;
 
+
+
+            //подготовим видео (запишем размеры sample'ов)
+            int[] sizeSamplesV = new int[0];
+            byte[] videoMP4 = videoClean;
+
+            i = 0;
+            int sampleCountV;
+            int sampleIndexOld = 0;//предыдущий индекс семпла
+            while (i + 3 < videoClean.Length)
+            {
+                if (videoClean[i] == 0 &&
+                    videoClean[i + 1] == 0 &&
+                    videoClean[i + 2] == 0 &&
+                    videoClean[i + 3] == 1)
+                {
+                    //длина sample без заголовка 
+                    int lengthSample = i - sampleIndexOld;
+                    sampleIndexOld = i;
+                    if (lengthSample != 0)
+                    {
+                        //запишем длину в массив
+                        Array.Resize(ref sizeSamplesV, sizeSamplesV.Length + 1);
+                        sizeSamplesV[sizeSamplesV.Length - 1] = lengthSample;
+                    }
+                }
+                i++;
+            }
+            //запишем длину в массив
+            Array.Resize(ref sizeSamplesV, sizeSamplesV.Length + 1);
+            sizeSamplesV[sizeSamplesV.Length - 1] = videoClean.Length - sampleIndexOld;
+
+            sampleCountV = sizeSamplesV.Length;
+
+
+
             //результат
             byte[] result = new byte[0];
 
@@ -216,6 +259,7 @@ namespace container_TS
 
             byte[] moov;
             byte[] mvhd;
+
             byte[] trak;
             byte[] tkhd;
             byte[] edts;
@@ -233,10 +277,27 @@ namespace container_TS
             byte[] stsz;
             byte[] stco;
 
+            byte[] trakV;
+            byte[] tkhdV;
+            byte[] edtsV;
+            byte[] elstV;
+            byte[] mdiaV;
+            byte[] hdlrV;
+            byte[] mdhdV;
+            byte[] minfV;
+            byte[] vmhdV;
+            byte[] dinfV;
+            byte[] stblV;
+            byte[] stsdV;
+            byte[] sttsV;
+            byte[] stscV;
+            byte[] stszV;
+            byte[] stcoV;
+
             ftyp = File.ReadAllBytes("ftyp");
             free = File.ReadAllBytes("free");
 
-            int mdatLength = audioMP4.Length + 8;
+            int mdatLength = audioMP4.Length + videoClean.Length + 8;
             mdat = new byte[mdatLength];
             mdat[0] = Convert.ToByte((mdatLength & 0xFF000000) >> 24);
             mdat[1] = Convert.ToByte((mdatLength & 0xFF0000) >> 16);
@@ -247,6 +308,10 @@ namespace container_TS
             mdat[6] = 97; //a
             mdat[7] = 116;//t
             Array.Copy(audioMP4, 0, mdat, 8, audioMP4.Length);
+            Array.Copy(videoMP4, 0, mdat, 8 + audioMP4.Length, videoMP4.Length);
+
+
+            ///соберём аудио
 
             stsd = File.ReadAllBytes("stsd");
 
@@ -597,6 +662,363 @@ namespace container_TS
             Array.Copy(edts, 0, trak, 8 + tkhd.Length, edts.Length);
             Array.Copy(mdia, 0, trak, 8 + tkhd.Length + edts.Length, mdia.Length);
 
+
+
+            ///соберём видео
+            
+            stsdV = File.ReadAllBytes("stsdV");
+
+            sttsV = new byte[24];
+            sttsV[0] = 0;//размер атома
+            sttsV[1] = 0;//размер атома
+            sttsV[2] = 0;//размер атома
+            sttsV[3] = 24;//размер атома
+            sttsV[4] = 115;//s
+            sttsV[5] = 116;//t
+            sttsV[6] = 116;//t
+            sttsV[7] = 115;//s
+            sttsV[8] = 0;//флаг
+            sttsV[9] = 0;//флаг
+            sttsV[10] = 0;//флаг
+            sttsV[11] = 0;//флаг
+            sttsV[12] = 0;//количество записей
+            sttsV[13] = 0;//количество записей
+            sttsV[14] = 0;//количество записей
+            sttsV[15] = 1;//количество записей
+            sttsV[16] = Convert.ToByte((sampleCountV & 0xFF000000) >> 24);//количество sample'ов
+            sttsV[17] = Convert.ToByte((sampleCountV & 0xFF0000) >> 16);  //количество sample'ов
+            sttsV[18] = Convert.ToByte((sampleCountV & 0xFF00) >> 8);     //количество sample'ов
+            sttsV[19] = Convert.ToByte(sampleCountV & 0xFF);              //количество sample'ов
+            sttsV[20] = 0;//продолжительность sample (delta)
+            sttsV[21] = 0;//продолжительность sample (delta)
+            sttsV[22] = 2;//продолжительность sample (delta)
+            sttsV[23] = 0;//продолжительность sample (delta)
+
+            stscV = new byte[28];
+            stscV[0] = 0;//размер атома
+            stscV[1] = 0;//размер атома
+            stscV[2] = 0;//размер атома
+            stscV[3] = 28;//размер атома
+            stscV[4] = 115;//s
+            stscV[5] = 116;//t
+            stscV[6] = 115;//s
+            stscV[7] = 99;//c
+            stscV[8] = 0;//флаг
+            stscV[9] = 0;//флаг
+            stscV[10] = 0;//флаг
+            stscV[11] = 0;//флаг
+            stscV[12] = 0;//количество записей
+            stscV[13] = 0;//количество записей
+            stscV[14] = 0;//количество записей
+            stscV[15] = 1;//количество записей
+            stscV[16] = 0;//первый кусок
+            stscV[17] = 0;//первый кусок
+            stscV[18] = 0;//первый кусок
+            stscV[19] = 1;//первый кусок
+            stscV[20] = Convert.ToByte((sampleCountV & 0xFF000000) >> 24);//количество sample'ов в куске
+            stscV[21] = Convert.ToByte((sampleCountV & 0xFF0000) >> 16);  //количество sample'ов в куске
+            stscV[22] = Convert.ToByte((sampleCountV & 0xFF00) >> 8);     //количество sample'ов в куске
+            stscV[23] = Convert.ToByte(sampleCountV & 0xFF);              //количество sample'ов в куске
+            stscV[24] = 0;//ID sample
+            stscV[25] = 0;//ID sample
+            stscV[26] = 0;//ID sample
+            stscV[27] = 1;//ID sample
+
+            int stszSizeV = 20 + sampleCountV * 4;
+            stszV = new byte[stszSizeV];
+            stszV[0] = Convert.ToByte((stszSizeV & 0xFF000000) >> 24);//размер атома
+            stszV[1] = Convert.ToByte((stszSizeV & 0xFF0000) >> 16);  //размер атома
+            stszV[2] = Convert.ToByte((stszSizeV & 0xFF00) >> 8);     //размер атома
+            stszV[3] = Convert.ToByte(stszSizeV & 0xFF);              //размер атома
+            stszV[4] = 115;//s
+            stszV[5] = 116;//t
+            stszV[6] = 115;//s
+            stszV[7] = 122;//z
+            stszV[8] = 0;//версия
+            stszV[9] = 0;//версия
+            stszV[10] = 0;//версия
+            stszV[11] = 0;//версия
+            stszV[12] = 0;//флаг
+            stszV[13] = 0;//флаг
+            stszV[14] = 0;//флаг
+            stszV[15] = 0;//флаг
+            stszV[16] = Convert.ToByte((sampleCountV & 0xFF000000) >> 24);//количество sample'ов
+            stszV[17] = Convert.ToByte((sampleCountV & 0xFF0000) >> 16);  //количество sample'ов
+            stszV[18] = Convert.ToByte((sampleCountV & 0xFF00) >> 8);     //количество sample'ов
+            stszV[19] = Convert.ToByte(sampleCountV & 0xFF);              //количество sample'ов
+            for (i = 0; i < sizeSamplesV.Length; i++)
+            {
+                stszV[20 + i * 4] = Convert.ToByte((sizeSamplesV[i] & 0xFF000000) >> 24);    //размер sample'а
+                stszV[20 + i * 4 + 1] = Convert.ToByte((sizeSamplesV[i] & 0xFF0000) >> 16);  //размер sample'а
+                stszV[20 + i * 4 + 2] = Convert.ToByte((sizeSamplesV[i] & 0xFF00) >> 8);     //размер sample'а
+                stszV[20 + i * 4 + 3] = Convert.ToByte(sizeSamplesV[i] & 0xFF);              //размер sample'а
+            }
+
+            stcoV = new byte[20];
+            stcoV[0] = Convert.ToByte((stcoV.Length & 0xFF000000) >> 24);//размер атома
+            stcoV[1] = Convert.ToByte((stcoV.Length & 0xFF0000) >> 16);  //размер атома
+            stcoV[2] = Convert.ToByte((stcoV.Length & 0xFF00) >> 8);     //размер атома
+            stcoV[3] = Convert.ToByte(stcoV.Length & 0xFF);              //размер атома
+            stcoV[4] = 115;//s
+            stcoV[5] = 116;//t
+            stcoV[6] = 99;//c
+            stcoV[7] = 111;//o
+            stcoV[8] = 0;//флаг
+            stcoV[9] = 0;//флаг
+            stcoV[10] = 0;//флаг
+            stcoV[11] = 0;//флаг
+            stcoV[12] = 0;//число кусков
+            stcoV[13] = 0;//число кусков
+            stcoV[14] = 0;//число кусков
+            stcoV[15] = 1;//число кусков
+            stcoV[16] = Convert.ToByte(((ftyp.Length + free.Length + audioMP4.Length + 8) & 0xFF000000) >> 24);//указатель на начало данных
+            stcoV[17] = Convert.ToByte(((ftyp.Length + free.Length + audioMP4.Length + 8) & 0xFF0000) >> 16);  //указатель на начало данных
+            stcoV[18] = Convert.ToByte(((ftyp.Length + free.Length + audioMP4.Length + 8) & 0xFF00) >> 8);     //указатель на начало данных
+            stcoV[19] = Convert.ToByte((ftyp.Length + free.Length + audioMP4.Length + 8) & 0xFF);              //указатель на начало данных
+
+
+            //соберём stbl
+            int stblLengthV = 8 + stsdV.Length + sttsV.Length + stscV.Length + stszV.Length + stcoV.Length;
+            stblV = new byte[stblLengthV];
+            stblV[0] = Convert.ToByte((stblLengthV & 0xFF000000) >> 24);//размер атома
+            stblV[1] = Convert.ToByte((stblLengthV & 0xFF0000) >> 16);  //размер атома
+            stblV[2] = Convert.ToByte((stblLengthV & 0xFF00) >> 8);     //размер атома
+            stblV[3] = Convert.ToByte(stblLengthV & 0xFF);              //размер атома
+            stblV[4] = 115;//s
+            stblV[5] = 116;//t
+            stblV[6] = 98;//b
+            stblV[7] = 108;//l
+            Array.Copy(stsdV, 0, stblV, 8, stsdV.Length);
+            Array.Copy(sttsV, 0, stblV, 8 + stsdV.Length, sttsV.Length);
+            Array.Copy(stscV, 0, stblV, 8 + stsdV.Length + sttsV.Length, stscV.Length);
+            Array.Copy(stszV, 0, stblV, 8 + stsdV.Length + sttsV.Length + stscV.Length, stszV.Length);
+            Array.Copy(stcoV, 0, stblV, 8 + stsdV.Length + sttsV.Length + stscV.Length + stszV.Length, stcoV.Length);
+
+            dinfV = File.ReadAllBytes("dinfV");
+            vmhdV = File.ReadAllBytes("vmhdV");
+
+            //соберём minf
+            int minfLengthV = 8 + vmhdV.Length + dinfV.Length + stblV.Length;
+            minfV = new byte[minfLengthV];
+            minfV[0] = Convert.ToByte((minfLengthV & 0xFF000000) >> 24);//размер атома
+            minfV[1] = Convert.ToByte((minfLengthV & 0xFF0000) >> 16);//размер атома
+            minfV[2] = Convert.ToByte((minfLengthV & 0xFF00) >> 8);//размер атома
+            minfV[3] = Convert.ToByte((minfLengthV & 0xFF));//размер атома
+            minfV[4] = 109;//m
+            minfV[5] = 105;//i
+            minfV[6] = 110;//n
+            minfV[7] = 102;//f
+            Array.Copy(vmhdV, 0, minfV, 8, vmhdV.Length);
+            Array.Copy(dinfV, 0, minfV, 8 + vmhdV.Length, dinfV.Length);
+            Array.Copy(stblV, 0, minfV, 8 + vmhdV.Length + dinfV.Length, stblV.Length);
+
+            hdlrV = File.ReadAllBytes("hdlrV");
+
+            mdhdV = new byte[32];
+            mdhdV[0] = 0;//размер атома
+            mdhdV[1] = 0;//размер атома
+            mdhdV[2] = 0;//размер атома
+            mdhdV[3] = 32;//размер атома
+            mdhdV[4] = 109;//m
+            mdhdV[5] = 100;//d
+            mdhdV[6] = 104;//h
+            mdhdV[7] = 100;//d
+            mdhdV[8] = 0;//версия
+            mdhdV[9] = 0;//флаг
+            mdhdV[10] = 0;//флаг
+            mdhdV[11] = 0;//флаг
+            mdhdV[12] = 0;//время создания
+            mdhdV[13] = 0;//время создания
+            mdhdV[14] = 0;//время создания
+            mdhdV[15] = 0;//время создания
+            mdhdV[16] = 0;//время изменения
+            mdhdV[17] = 0;//время изменения
+            mdhdV[18] = 0;//время изменения
+            mdhdV[19] = 0;//время изменения
+            mdhdV[20] = 0;//time scale
+            mdhdV[21] = 0;//time scale
+            mdhdV[22] = 48;//time scale 12288
+            mdhdV[23] = 0;//time scale 12288
+            mdhdV[24] = Convert.ToByte(((sampleCountV * 512) & 0xFF000000) >> 24);
+            mdhdV[25] = Convert.ToByte(((sampleCountV * 512) & 0xFF0000) >> 16);
+            mdhdV[26] = Convert.ToByte(((sampleCountV * 512) & 0xFF00) >> 8);
+            mdhdV[27] = Convert.ToByte((sampleCountV * 512) & 0xFF);
+            mdhdV[28] = 85;//язык
+            mdhdV[29] = 196;//язык
+            mdhdV[30] = 0;//Quality
+            mdhdV[31] = 0;//Quality
+
+            //соберём mdia
+            int mdiaLengthV = 8 + mdhdV.Length + hdlrV.Length + minfV.Length;
+            mdiaV = new byte[mdiaLengthV];
+            mdiaV[0] = Convert.ToByte((mdiaLengthV & 0xFF000000) >> 24);//размер атома
+            mdiaV[1] = Convert.ToByte((mdiaLengthV & 0xFF0000) >> 16);//размер атома
+            mdiaV[2] = Convert.ToByte((mdiaLengthV & 0xFF00) >> 8);//размер атома
+            mdiaV[3] = Convert.ToByte(mdiaLengthV & 0xFF);//размер атома
+            mdiaV[4] = 109;//m
+            mdiaV[5] = 100;//d
+            mdiaV[6] = 105;//i
+            mdiaV[7] = 97;//a
+            Array.Copy(mdhdV, 0, mdiaV, 8, mdhdV.Length);
+            Array.Copy(hdlrV, 0, mdiaV, 8 + mdhdV.Length, hdlrV.Length);
+            Array.Copy(minfV, 0, mdiaV, 8 + mdhdV.Length + hdlrV.Length, minfV.Length);
+
+            elstV = new byte[28];
+            int videoDuration = sampleCountV * 512 * 1000 / 12288;
+            elstV[0] = 0;//размер атома
+            elstV[1] = 0;//размер атома
+            elstV[2] = 0;//размер атома
+            elstV[3] = 28;//размер атома
+            elstV[4] = 101;//e
+            elstV[5] = 108;//l
+            elstV[6] = 115;//s
+            elstV[7] = 116;//t
+            elstV[8] = 0;//версия
+            elstV[9] = 0;//флаг
+            elstV[10] = 0;//флаг
+            elstV[11] = 0;//флаг
+            elstV[12] = 0;//количество
+            elstV[13] = 0;//количество
+            elstV[14] = 0;//количество
+            elstV[15] = 1;//количество
+            elstV[16] = Convert.ToByte((videoDuration & 0xFF000000) >> 24);//длительность видео
+            elstV[17] = Convert.ToByte((videoDuration & 0xFF0000) >> 16);//длительность видео
+            elstV[18] = Convert.ToByte((videoDuration & 0xFF00) >> 8);//длительность видео
+            elstV[19] = Convert.ToByte(videoDuration & 0xFF);//длительность видео
+            elstV[20] = 0;//начальное время
+            elstV[21] = 0;//начальное время
+            elstV[22] = 0;//начальное время
+            elstV[23] = 0;//начальное время
+            elstV[24] = 0;//скорость видео 01.00
+            elstV[25] = 1;//скорость видео 01.00
+            elstV[26] = 0;//скорость видео 01.00
+            elstV[27] = 0;//скорость видео 01.00
+
+            //соберём edts
+            int edtsLengthV = 8 + elstV.Length;
+            edtsV = new byte[edtsLengthV];
+            edtsV[0] = Convert.ToByte((edtsLengthV & 0xFF000000) >> 24);//размер атома
+            edtsV[1] = Convert.ToByte((edtsLengthV & 0xFF0000) >> 16);//размер атома
+            edtsV[2] = Convert.ToByte((edtsLengthV & 0xFF00) >> 8);//размер атома
+            edtsV[3] = Convert.ToByte(edtsLengthV & 0xFF);//размер атома
+            edtsV[4] = 101;//e
+            edtsV[5] = 100;//d
+            edtsV[6] = 116;//t
+            edtsV[7] = 115;//s
+            Array.Copy(elstV, 0, edtsV, 8, elstV.Length);
+
+            tkhdV = new byte[92];
+            tkhdV[0] = 0;//размер атома
+            tkhdV[1] = 0;//размер атома
+            tkhdV[2] = 0;//размер атома
+            tkhdV[3] = 92;//размер атома
+            tkhdV[4] = 116;//t
+            tkhdV[5] = 107;//k
+            tkhdV[6] = 104;//h
+            tkhdV[7] = 100;//d
+            tkhdV[8] = 0;//версия
+            tkhdV[9] = 0;//флаги
+            tkhdV[10] = 0;//флаги
+            tkhdV[11] = 15;//флаги
+            tkhdV[12] = 0;//время создания
+            tkhdV[13] = 0;//время создания
+            tkhdV[14] = 0;//время создания
+            tkhdV[15] = 0;//время создания
+            tkhdV[16] = 0;//время изменения
+            tkhdV[17] = 0;//время изменения
+            tkhdV[18] = 0;//время изменения
+            tkhdV[19] = 0;//время изменения
+            tkhdV[20] = 0;//track ID
+            tkhdV[21] = 0;//track ID
+            tkhdV[22] = 0;//track ID
+            tkhdV[23] = 2;//track ID
+            tkhdV[24] = 0;//зарезервировано
+            tkhdV[25] = 0;//зарезервировано
+            tkhdV[26] = 0;//зарезервировано
+            tkhdV[27] = 0;//зарезервировано
+            tkhdV[28] = Convert.ToByte((videoDuration & 0xFF000000) >> 24);//длительность аудио
+            tkhdV[29] = Convert.ToByte((videoDuration & 0xFF0000) >> 16);//длительность аудио
+            tkhdV[30] = Convert.ToByte((videoDuration & 0xFF00) >> 8);//длительность аудио
+            tkhdV[31] = Convert.ToByte(videoDuration & 0xFF);//длительность аудио
+            tkhdV[32] = 0;//зарезервировано
+            tkhdV[33] = 0;//зарезервировано
+            tkhdV[34] = 0;//зарезервировано
+            tkhdV[35] = 0;//зарезервировано
+            tkhdV[36] = 0;//зарезервировано
+            tkhdV[37] = 0;//зарезервировано
+            tkhdV[38] = 0;//зарезервировано
+            tkhdV[39] = 0;//зарезервировано
+            tkhdV[40] = 0;//слой
+            tkhdV[41] = 0;//слой
+            tkhdV[42] = 0;//тип данных (0 - видео, 1 - аудио, 2 - субтитры)
+            tkhdV[43] = 0;//тип данных (0 - видео, 1 - аудио, 2 - субтитры)
+            tkhdV[44] = 0;//громкость 0.0
+            tkhdV[45] = 0;//громкость 0.0
+            tkhdV[46] = 0;//зарезервировано
+            tkhdV[47] = 0;//зарезервировано
+            tkhdV[48] = 0;//матрица
+            tkhdV[49] = 1;//матрица
+            tkhdV[50] = 0;//матрица
+            tkhdV[51] = 0;//матрица
+            tkhdV[52] = 0;//матрица
+            tkhdV[53] = 0;//матрица
+            tkhdV[54] = 0;//матрица
+            tkhdV[55] = 0;//матрица
+            tkhdV[56] = 0;//матрица
+            tkhdV[57] = 0;//матрица
+            tkhdV[58] = 0;//матрица
+            tkhdV[59] = 0;//матрица
+            tkhdV[60] = 0;//матрица
+            tkhdV[61] = 0;//матрица
+            tkhdV[62] = 0;//матрица
+            tkhdV[63] = 0;//матрица
+            tkhdV[64] = 0;//матрица
+            tkhdV[65] = 1;//матрица
+            tkhdV[66] = 0;//матрица
+            tkhdV[67] = 0;//матрица
+            tkhdV[68] = 0;//матрица
+            tkhdV[69] = 0;//матрица
+            tkhdV[70] = 0;//матрица
+            tkhdV[71] = 0;//матрица
+            tkhdV[72] = 0;//матрица
+            tkhdV[73] = 0;//матрица
+            tkhdV[74] = 0;//матрица
+            tkhdV[75] = 0;//матрица
+            tkhdV[76] = 0;//матрица
+            tkhdV[77] = 0;//матрица
+            tkhdV[78] = 0;//матрица
+            tkhdV[79] = 0;//матрица
+            tkhdV[80] = 64;//матрица
+            tkhdV[81] = 0;//матрица
+            tkhdV[82] = 0;//матрица
+            tkhdV[83] = 0;//матрица
+            tkhdV[84] = 6;//ширина
+            tkhdV[85] = 64;//ширина
+            tkhdV[86] = 0;//ширина
+            tkhdV[87] = 0;//ширина
+            tkhdV[88] = 3;//высота
+            tkhdV[89] = 132;//высота
+            tkhdV[90] = 0;//высота
+            tkhdV[91] = 0;//высота
+
+            //соберём trak
+            int trakLengthV = 8 + tkhdV.Length + edtsV.Length + mdiaV.Length;
+            trakV = new byte[trakLengthV];
+            trakV[0] = Convert.ToByte((trakLengthV & 0xFF000000) >> 24);//размер атома
+            trakV[1] = Convert.ToByte((trakLengthV & 0xFF0000) >> 16);//размер атома
+            trakV[2] = Convert.ToByte((trakLengthV & 0xFF00) >> 8);//размер атома
+            trakV[3] = Convert.ToByte(trakLengthV & 0xFF);//размер атома
+            trakV[4] = 116;//t
+            trakV[5] = 114;//r
+            trakV[6] = 97;//a
+            trakV[7] = 107;//k
+            Array.Copy(tkhdV, 0, trakV, 8, tkhdV.Length);
+            Array.Copy(edtsV, 0, trakV, 8 + tkhdV.Length, edtsV.Length);
+            Array.Copy(mdiaV, 0, trakV, 8 + tkhdV.Length + edtsV.Length, mdiaV.Length);
+
+
+
+            //соберём аудио и видео вместе в moov
             mvhd = new byte[108];
             mvhd[0] = 0;//размер атома
             mvhd[1] = 0;//размер атома
@@ -622,10 +1044,10 @@ namespace container_TS
             mvhd[21] = 0;//сколько в одной секунде
             mvhd[22] = 3;//сколько в одной секунде
             mvhd[23] = 232;//сколько в одной секунде
-            mvhd[24] = Convert.ToByte((audioDuration & 0xFF000000) >> 24);//длительность аудио
-            mvhd[25] = Convert.ToByte((audioDuration & 0xFF0000) >> 16);//длительность аудио
-            mvhd[26] = Convert.ToByte((audioDuration & 0xFF00) >> 8);//длительность аудио
-            mvhd[27] = Convert.ToByte(audioDuration & 0xFF);//длительность аудио
+            mvhd[24] = Convert.ToByte((audioDuration & 0xFF000000) >> 24);//длительность
+            mvhd[25] = Convert.ToByte((audioDuration & 0xFF0000) >> 16);//длительность
+            mvhd[26] = Convert.ToByte((audioDuration & 0xFF00) >> 8);//длительность
+            mvhd[27] = Convert.ToByte(audioDuration & 0xFF);//длительность
             mvhd[28] = 0;//скорость
             mvhd[29] = 1;//скорость
             mvhd[30] = 0;//скорость
@@ -705,10 +1127,10 @@ namespace container_TS
             mvhd[104] = 0;//следующий ID трека
             mvhd[105] = 0;//следующий ID трека
             mvhd[106] = 0;//следующий ID трека
-            mvhd[107] = 2;//следующий ID трека
+            mvhd[107] = 3;//следующий ID трека
 
             //соберём moov
-            int moovLength = 8 + mvhd.Length + trak.Length;
+            int moovLength = 8 + mvhd.Length + trak.Length + trakV.Length;
             moov = new byte[moovLength];
             moov[0] = Convert.ToByte((moovLength & 0xFF000000) >> 24);//размер атома
             moov[1] = Convert.ToByte((moovLength & 0xFF0000) >> 16);//размер атома
@@ -720,6 +1142,7 @@ namespace container_TS
             moov[7] = 118;//v
             Array.Copy(mvhd, 0, moov, 8, mvhd.Length);
             Array.Copy(trak, 0, moov, 8 + mvhd.Length, trak.Length);
+            Array.Copy(trakV, 0, moov, 8 + mvhd.Length + trak.Length, trakV.Length);
 
             //соберём mp4
             int resultLength = ftyp.Length + free.Length + mdat.Length + moov.Length;
@@ -749,6 +1172,16 @@ namespace container_TS
                     {
                         lengthPIDs += pTSs[i].data.Length;
                     }
+                }
+            }
+
+            int countBegin = 0;
+            for (int i = 0; i < pTSs.Count; i++)
+            {
+                if (pTSs[i].PID == PID &&
+                    pTSs[i].FlagBeginData == 1)
+                {
+                    countBegin++;
                 }
             }
 
