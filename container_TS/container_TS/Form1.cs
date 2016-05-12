@@ -14,6 +14,8 @@ namespace container_TS
 {
     public partial class Form1 : Form
     {
+        int[] sizeSamplesV = new int[0];
+
         public Form1()
         {
             InitializeComponent();
@@ -168,7 +170,7 @@ namespace container_TS
 
                 DT1 = DateTime.Now.Ticks;
                 //label1.Text = "Время обработки: " + ((DT1 - DT0) / 10000).ToString() + " миллисекунд";
-                //this.Text = "Время обработки: " + ((DT1 - DT0) / 10000).ToString() + " миллисекунд";
+                this.Text = "Время обработки: " + ((DT1 - DT0) / 10000).ToString() + " миллисекунд";
             }
         }
 
@@ -216,7 +218,7 @@ namespace container_TS
 
 
             //подготовим видео (запишем размеры sample'ов)
-            int[] sizeSamplesV = new int[0];
+            //int[] sizeSamplesV = new int[0];
             byte[] videoMP4 = videoClean;
 
             i = 0;
@@ -229,21 +231,21 @@ namespace container_TS
                     videoClean[i + 2] == 0 &&
                     videoClean[i + 3] == 1)
                 {
-                    //длина sample без заголовка 
+                    //длина sample
                     int lengthSample = i - sampleIndexOld;
                     sampleIndexOld = i;
                     if (lengthSample != 0)
                     {
                         //запишем длину в массив
-                        Array.Resize(ref sizeSamplesV, sizeSamplesV.Length + 1);
-                        sizeSamplesV[sizeSamplesV.Length - 1] = lengthSample;
+                        //Array.Resize(ref sizeSamplesV, sizeSamplesV.Length + 1);
+                        //sizeSamplesV[sizeSamplesV.Length - 1] = lengthSample;
                     }
                 }
                 i++;
             }
             //запишем длину в массив
-            Array.Resize(ref sizeSamplesV, sizeSamplesV.Length + 1);
-            sizeSamplesV[sizeSamplesV.Length - 1] = videoClean.Length - sampleIndexOld;
+            //Array.Resize(ref sizeSamplesV, sizeSamplesV.Length + 1);
+            //sizeSamplesV[sizeSamplesV.Length - 1] = videoClean.Length - sampleIndexOld;
 
             sampleCountV = sizeSamplesV.Length;
 
@@ -1031,7 +1033,7 @@ namespace container_TS
             mvhd[8] = 0;//версия
             mvhd[9] = 0;//флаги
             mvhd[10] = 0;//флаги
-            mvhd[11] = 15;//флаги
+            mvhd[11] = 0;//флаги
             mvhd[12] = 0;//время создания
             mvhd[13] = 0;//время создания
             mvhd[14] = 0;//время создания
@@ -1154,7 +1156,7 @@ namespace container_TS
 
             DT1 = DateTime.Now.Ticks;
             label1.Text = "Время создания mp4: " + ((DT1 - DT0) / 10000).ToString() + " миллисекунд";
-            this.Text = "Время создания mp4: " + ((DT1 - DT0) / 10000).ToString() + " миллисекунд";
+            //this.Text = "Время создания mp4: " + ((DT1 - DT0) / 10000).ToString() + " миллисекунд";
 
             return result;
 
@@ -1184,6 +1186,7 @@ namespace container_TS
                     countBegin++;
                 }
             }
+            lengthPIDs += countBegin * 6;
 
             //соединим PES-пакеты в массив
             byte[] result = new byte[lengthPIDs];
@@ -1206,8 +1209,9 @@ namespace container_TS
             byte[] result2 = new byte[0];
 
             //извлечём данные из PES-пакетов
+            sizeSamplesV = new int[0];
             int j = 0;//начало PES пакета
-            while (j + 4 < result.Length)
+            while (j + 6 < result.Length)
             {
                 //найдём префикс начала пакета PES (000001h), и идентификатор потока
                 if (result[j] == 0 &&
@@ -1286,19 +1290,46 @@ namespace container_TS
                                 x > usefulPes.Length
                                 )
                             {
+                                if (streamID == 224)
+                                {
+                                    usefulPes[3] = 2;
+
+                                    usefulPes[6] = Convert.ToByte(((usefulPes.Length - 10) & 0xFF000000) >> 24);//размер
+                                    usefulPes[7] = Convert.ToByte(((usefulPes.Length - 10) & 0xFF0000) >> 16);//размер
+                                    usefulPes[8] = Convert.ToByte(((usefulPes.Length - 10) & 0xFF00) >> 8);//размер
+                                    usefulPes[9] = Convert.ToByte((usefulPes.Length - 10) & 0xFF);//размер
+                                }
                                 //запишем в массив чистые данные из PES-пакета
                                 Array.Resize(ref result2, result2.Length + usefulPes.Length);
                                 Array.Copy(usefulPes, 0, result2, result2.Length - usefulPes.Length, usefulPes.Length);
+
+                                Array.Resize(ref sizeSamplesV, sizeSamplesV.Length + 1);
+                                sizeSamplesV[sizeSamplesV.Length - 1] = usefulPes.Length;
                             }
                             else
                             {
+                                if (streamID == 224)
+                                {
+                                    usefulPes[3] = 2;
+
+                                    usefulPes[6] = Convert.ToByte(((x - 10) & 0xFF000000) >> 24);//размер
+                                    usefulPes[7] = Convert.ToByte(((x - 10) & 0xFF0000) >> 16);//размер
+                                    usefulPes[8] = Convert.ToByte(((x - 10) & 0xFF00) >> 8);//размер
+                                    usefulPes[9] = Convert.ToByte((x - 10) & 0xFF);//размер
+                                }
                                 Array.Resize(ref result2, result2.Length + x);
                                 Array.Copy(usefulPes, 0, result2, result2.Length - x, x);
+
+                                Array.Resize(ref sizeSamplesV, sizeSamplesV.Length + 1);
+                                sizeSamplesV[sizeSamplesV.Length - 1] = x;
                             }
+
+                            
                         }
                         k++;
                     }
                 }
+                
                 j++;
             }
 
