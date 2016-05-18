@@ -15,6 +15,11 @@ namespace container_TS
     public partial class Form1 : Form
     {
         int[] sizeSamplesV = new int[0];
+        List<int> PTSsA = new List<int>();
+        List<int> DTSsA = new List<int>();
+
+        List<int> PTSsV = new List<int>();
+        List<int> DTSsV = new List<int>();
 
         public Form1()
         {
@@ -164,9 +169,12 @@ namespace container_TS
                         videoIndex = i;
                     }
                 }
+
+               // ExtractStream(pTSs, PIDs[videoIndex], streamIDs[videoIndex]);
+                
                 string filePathSave = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory) + @"\" + openFileDialog.SafeFileName + "_" + "full.mp4";
                 File.WriteAllBytes(filePathSave, PackerMP4(ExtractStream(pTSs, PIDs[audioIndex], streamIDs[audioIndex]), ExtractStream(pTSs, PIDs[videoIndex], streamIDs[videoIndex])));
-
+                
 
                 DT1 = DateTime.Now.Ticks;
                 //label1.Text = "Время обработки: " + ((DT1 - DT0) / 10000).ToString() + " миллисекунд";
@@ -291,6 +299,7 @@ namespace container_TS
             byte[] dinfV;
             byte[] stblV;
             byte[] stsdV;
+            byte[] cttsV;
             byte[] sttsV;
             byte[] stscV;
             byte[] stszV;
@@ -696,6 +705,54 @@ namespace container_TS
             sttsV[22] = 2;//продолжительность sample (delta)
             sttsV[23] = 0;//продолжительность sample (delta)
 
+            //cttsV = File.ReadAllBytes("cttsV");
+            //cttsV = new byte[0];
+            cttsV = new byte[16 + sampleCountV * 8];
+            cttsV[0] = Convert.ToByte((cttsV.Length & 0xFF000000) >> 24);//размер атома
+            cttsV[1] = Convert.ToByte((cttsV.Length & 0xFF0000) >> 16);  //размер атома
+            cttsV[2] = Convert.ToByte((cttsV.Length & 0xFF00) >> 8);     //размер атома
+            cttsV[3] = Convert.ToByte(cttsV.Length & 0xFF);              //размер атома
+            cttsV[4] = 99;//c
+            cttsV[5] = 116;//t
+            cttsV[6] = 116;//t
+            cttsV[7] = 115;//s
+            cttsV[8] = 0;//версия
+            cttsV[9] = 0;//флаг
+            cttsV[10] = 0;//флаг
+            cttsV[11] = 0;//флаг
+            cttsV[12] = Convert.ToByte((sampleCountV & 0xFF000000) >> 24);//количество sample'ов
+            cttsV[13] = Convert.ToByte((sampleCountV & 0xFF0000) >> 16);  //количество sample'ов
+            cttsV[14] = Convert.ToByte((sampleCountV & 0xFF00) >> 8);     //количество sample'ов
+            cttsV[15] = Convert.ToByte(sampleCountV & 0xFF);              //количество sample'ов
+            int count = 1;
+            for (int j = 0; j < PTSsV.Count; j++)
+            {
+                if(PTSsV[j] > DTSsV[j])
+                {
+                    cttsV[16 + (count - 1) * 8] = 0;//количество sample'ов
+                    cttsV[16 + (count - 1) * 8 + 1] = 0;  //количество sample'ов
+                    cttsV[16 + (count - 1) * 8 + 2] = 0;     //количество sample'ов
+                    cttsV[16 + (count - 1) * 8 + 3] = 1;              //количество sample'ов
+                    if (DTSsV[j] != 0)
+                    {
+                        int sampleDuration = (PTSsV[j] - DTSsV[j]) * 12288 / 90000;
+                        cttsV[16 + (count - 1) * 8 + 4] = Convert.ToByte((sampleDuration & 0xFF000000) >> 24);//продолжительность семпла
+                        cttsV[16 + (count - 1) * 8 + 5] = Convert.ToByte((sampleDuration & 0xFF0000) >> 16);  //продолжительность семпла
+                        cttsV[16 + (count - 1) * 8 + 6] = Convert.ToByte((sampleDuration & 0xFF00) >> 8);     //продолжительность семпла
+                        cttsV[16 + (count - 1) * 8 + 7] = Convert.ToByte(sampleDuration & 0xFF);              //продолжительность семпла
+                    }
+                    else
+                    {
+                        cttsV[16 + (count - 1) * 8 + 4] = 0;//продолжительность семпла
+                        cttsV[16 + (count - 1) * 8 + 5] = 0;  //продолжительность семпла
+                        cttsV[16 + (count - 1) * 8 + 6] = 0;     //продолжительность семпла
+                        cttsV[16 + (count - 1) * 8 + 7] = 0;              //продолжительность семпла
+                    }
+                    count++;
+                }
+            }
+            
+
             stscV = new byte[28];
             stscV[0] = 0;//размер атома
             stscV[1] = 0;//размер атома
@@ -780,7 +837,7 @@ namespace container_TS
 
 
             //соберём stbl
-            int stblLengthV = 8 + stsdV.Length + sttsV.Length + stscV.Length + stszV.Length + stcoV.Length;
+            int stblLengthV = 8 + stsdV.Length + sttsV.Length + cttsV.Length + stscV.Length + stszV.Length + stcoV.Length;
             stblV = new byte[stblLengthV];
             stblV[0] = Convert.ToByte((stblLengthV & 0xFF000000) >> 24);//размер атома
             stblV[1] = Convert.ToByte((stblLengthV & 0xFF0000) >> 16);  //размер атома
@@ -792,9 +849,10 @@ namespace container_TS
             stblV[7] = 108;//l
             Array.Copy(stsdV, 0, stblV, 8, stsdV.Length);
             Array.Copy(sttsV, 0, stblV, 8 + stsdV.Length, sttsV.Length);
-            Array.Copy(stscV, 0, stblV, 8 + stsdV.Length + sttsV.Length, stscV.Length);
-            Array.Copy(stszV, 0, stblV, 8 + stsdV.Length + sttsV.Length + stscV.Length, stszV.Length);
-            Array.Copy(stcoV, 0, stblV, 8 + stsdV.Length + sttsV.Length + stscV.Length + stszV.Length, stcoV.Length);
+            Array.Copy(cttsV, 0, stblV, 8 + stsdV.Length + sttsV.Length, cttsV.Length);
+            Array.Copy(stscV, 0, stblV, 8 + stsdV.Length + sttsV.Length + cttsV.Length, stscV.Length);
+            Array.Copy(stszV, 0, stblV, 8 + stsdV.Length + sttsV.Length + cttsV.Length + stscV.Length, stszV.Length);
+            Array.Copy(stcoV, 0, stblV, 8 + stsdV.Length + sttsV.Length + cttsV.Length + stscV.Length + stszV.Length, stcoV.Length);
 
             dinfV = File.ReadAllBytes("dinfV");
             vmhdV = File.ReadAllBytes("vmhdV");
@@ -1203,7 +1261,7 @@ namespace container_TS
                 }
             }
 
-            File.WriteAllBytes(@"C:\1\temp.xxx", result);//сохранение промежуточной информации(для отладки)
+            
 
             //здесь будет чистый поток требуемых данных
             byte[] result2 = new byte[0];
@@ -1211,6 +1269,9 @@ namespace container_TS
             //извлечём данные из PES-пакетов
             sizeSamplesV = new int[0];
             int j = 0;//начало PES пакета
+            int tempInt = 0;
+            List<int> tempList = new List<int>();
+            byte[] tempByte = new byte[0];
             while (j + 6 < result.Length)
             {
                 //найдём префикс начала пакета PES (000001h), и идентификатор потока
@@ -1239,6 +1300,69 @@ namespace container_TS
                                 x = x - 3 - y;//длина полезных данных PES пакета
                             }
                             j = j + y;
+
+
+                            //разберём дополнительные поля pes-заголовков
+                            tempList.Add(y);
+                            Array.Resize(ref tempByte, tempByte.Length + y);
+                            Array.Copy(result, j - y, tempByte, tempByte.Length - y, y);
+
+                            if (y != 0)
+                            {
+                                byte[] pesHead = new byte[y];
+                                Array.Copy(result, j - y, pesHead, 0, y);
+
+                                //только PTS
+                                if (((pesHead[0] & 0xF0) >> 4) == 2)
+                                {
+                                    int PTS = 0;
+                                    PTS += (pesHead[0] & 0xE) << 29;
+                                    PTS += pesHead[1] << 22;
+                                    PTS += (pesHead[2] & 0xFE) << 14;
+                                    PTS += pesHead[3] << 7;
+                                    PTS += (pesHead[4] & 0xFE) >> 1;
+
+                                    if (streamID == 224)
+                                    {
+                                        PTSsV.Add(PTS);
+                                        DTSsV.Add(0);
+                                    }
+                                    if (streamID == 192)
+                                    {
+                                        PTSsA.Add(PTS);
+                                        DTSsA.Add(0);
+                                    }
+                                }
+
+                                //PTS + DTS
+                                if (((pesHead[0] & 0xF0) >> 4) == 3)
+                                {
+                                    int PTS = 0;
+                                    int DTS = 0;
+                                    PTS += (pesHead[0] & 0xE) << 29;
+                                    PTS += pesHead[1] << 22;
+                                    PTS += (pesHead[2] & 0xFE) << 14;
+                                    PTS += pesHead[3] << 7;
+                                    PTS += (pesHead[4] & 0xFE) >> 1;
+
+                                    DTS += (pesHead[5] & 0xE) >> 29;
+                                    DTS += pesHead[6] << 22;
+                                    DTS += (pesHead[7] & 0xFE) << 14;
+                                    DTS += pesHead[8] << 7;
+                                    DTS += (pesHead[9] & 0xFE) >> 1;
+
+                                    if (streamID == 224)
+                                    {
+                                        PTSsV.Add(PTS);
+                                        DTSsV.Add(DTS);
+                                    }
+                                    if (streamID == 192)
+                                    {
+                                        PTSsA.Add(PTS);
+                                        DTSsA.Add(DTS);
+                                    }
+                                }
+                            }
 
                             //вырежем полезные данные из пакета
                             byte[] usefulPes = new byte[k - j];
@@ -1286,45 +1410,77 @@ namespace container_TS
                                 g++;
                             }
 
+
                             if (x == 0 ||
-                                x > usefulPes.Length
-                                )
+                                x > usefulPes.Length)
                             {
                                 if (streamID == 224)
                                 {
-                                    usefulPes[3] = 2;
+                                    if (PTSsV[PTSsV.Count - 1] > DTSsV[DTSsV.Count - 1])
+                                    {
+                                        usefulPes[3] = 2;
 
-                                    usefulPes[6] = Convert.ToByte(((usefulPes.Length - 10) & 0xFF000000) >> 24);//размер
-                                    usefulPes[7] = Convert.ToByte(((usefulPes.Length - 10) & 0xFF0000) >> 16);//размер
-                                    usefulPes[8] = Convert.ToByte(((usefulPes.Length - 10) & 0xFF00) >> 8);//размер
-                                    usefulPes[9] = Convert.ToByte((usefulPes.Length - 10) & 0xFF);//размер
+                                        usefulPes[6] = Convert.ToByte(((usefulPes.Length - 10) & 0xFF000000) >> 24);//размер
+                                        usefulPes[7] = Convert.ToByte(((usefulPes.Length - 10) & 0xFF0000) >> 16);//размер
+                                        usefulPes[8] = Convert.ToByte(((usefulPes.Length - 10) & 0xFF00) >> 8);//размер
+                                        usefulPes[9] = Convert.ToByte((usefulPes.Length - 10) & 0xFF);//размер
+
+                                        //запишем в массив чистые данные из PES-пакета
+                                        Array.Resize(ref result2, result2.Length + usefulPes.Length);
+                                        Array.Copy(usefulPes, 0, result2, result2.Length - usefulPes.Length, usefulPes.Length);
+
+                                        Array.Resize(ref sizeSamplesV, sizeSamplesV.Length + 1);
+                                        sizeSamplesV[sizeSamplesV.Length - 1] = usefulPes.Length;
+                                    }
                                 }
-                                //запишем в массив чистые данные из PES-пакета
-                                Array.Resize(ref result2, result2.Length + usefulPes.Length);
-                                Array.Copy(usefulPes, 0, result2, result2.Length - usefulPes.Length, usefulPes.Length);
+                                if (streamID == 192)
+                                {
+                                    if (PTSsA[PTSsA.Count - 1] > DTSsA[DTSsA.Count - 1])
+                                    {
+                                        //запишем в массив чистые данные из PES-пакета
+                                        Array.Resize(ref result2, result2.Length + usefulPes.Length);
+                                        Array.Copy(usefulPes, 0, result2, result2.Length - usefulPes.Length, usefulPes.Length);
 
-                                Array.Resize(ref sizeSamplesV, sizeSamplesV.Length + 1);
-                                sizeSamplesV[sizeSamplesV.Length - 1] = usefulPes.Length;
+                                        Array.Resize(ref sizeSamplesV, sizeSamplesV.Length + 1);
+                                        sizeSamplesV[sizeSamplesV.Length - 1] = usefulPes.Length;
+                                    }
+                                }
                             }
                             else
                             {
                                 if (streamID == 224)
                                 {
-                                    usefulPes[3] = 2;
+                                    if (PTSsV[PTSsV.Count - 1] > DTSsV[DTSsV.Count - 1])
+                                    {
+                                        usefulPes[3] = 2;
 
-                                    usefulPes[6] = Convert.ToByte(((x - 10) & 0xFF000000) >> 24);//размер
-                                    usefulPes[7] = Convert.ToByte(((x - 10) & 0xFF0000) >> 16);//размер
-                                    usefulPes[8] = Convert.ToByte(((x - 10) & 0xFF00) >> 8);//размер
-                                    usefulPes[9] = Convert.ToByte((x - 10) & 0xFF);//размер
+                                        usefulPes[6] = Convert.ToByte(((x - 10) & 0xFF000000) >> 24);//размер
+                                        usefulPes[7] = Convert.ToByte(((x - 10) & 0xFF0000) >> 16);//размер
+                                        usefulPes[8] = Convert.ToByte(((x - 10) & 0xFF00) >> 8);//размер
+                                        usefulPes[9] = Convert.ToByte((x - 10) & 0xFF);//размер
+
+                                        Array.Resize(ref result2, result2.Length + x);
+                                        Array.Copy(usefulPes, 0, result2, result2.Length - x, x);
+
+                                        Array.Resize(ref sizeSamplesV, sizeSamplesV.Length + 1);
+                                        sizeSamplesV[sizeSamplesV.Length - 1] = x;
+                                    }
                                 }
-                                Array.Resize(ref result2, result2.Length + x);
-                                Array.Copy(usefulPes, 0, result2, result2.Length - x, x);
+                                if (streamID == 192)
+                                {
+                                    if (PTSsA[PTSsA.Count - 1] > DTSsA[DTSsA.Count - 1])
+                                    {
+                                        Array.Resize(ref result2, result2.Length + x);
+                                        Array.Copy(usefulPes, 0, result2, result2.Length - x, x);
 
-                                Array.Resize(ref sizeSamplesV, sizeSamplesV.Length + 1);
-                                sizeSamplesV[sizeSamplesV.Length - 1] = x;
+                                        Array.Resize(ref sizeSamplesV, sizeSamplesV.Length + 1);
+                                        sizeSamplesV[sizeSamplesV.Length - 1] = x;
+                                    }
+                                }
                             }
 
-                            
+
+
                         }
                         k++;
                     }
@@ -1332,6 +1488,8 @@ namespace container_TS
                 
                 j++;
             }
+
+            //File.WriteAllBytes(@"C:\3\temp.xxx", tempByte);//сохранение промежуточной информации(для отладки)
 
             return result2;
         }
