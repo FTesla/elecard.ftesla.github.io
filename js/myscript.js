@@ -366,7 +366,7 @@ function GetMediaFile(link)
 					newCell.innerHTML="<b>" + v + " бит/сек</b>";
 					
 					document.body.appendChild(newElem);
-					ExtractStream(intArr);
+					ExtractStreams(intArr);
 				}
 				loads = false;
 				countMediaFiles++;			
