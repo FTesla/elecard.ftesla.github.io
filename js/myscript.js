@@ -142,7 +142,14 @@ function GetPlaylists()
 				}
 				else
 				{
-					document.getElementById('info').innerHTML = "Плейлист/видеофайл не найден, пожалуйста, проверьте введённый URL.";
+					if(linkToPlaylists.substr(-3) == '.ts')
+					{
+						GetMediaFile(linkToPlaylists);
+					}
+					else
+					{
+						document.getElementById('info').innerHTML = "Плейлист/видеофайл не найден, пожалуйста, проверьте введённый URL.";
+					}
 				}
 			}
 		}

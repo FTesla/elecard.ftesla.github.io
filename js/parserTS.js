@@ -537,11 +537,18 @@ function ExtractStreams(fileByte)
 		{
 			//длина sample
 			var lengthSample = j - sampleIndexOld;
-			
+	
 			if(PTSsV[PTSDTSIndex] > DTSsV[PTSDTSIndex])
 			{
 				if (lengthSample != 0)
 				{
+					//подправим заголовки h264 семплов
+					streams[indexVideo].Data[sampleIndexOld + 3] = 2;
+					streams[indexVideo].Data[sampleIndexOld + 6] = ((lengthSample - 10) & 0xFF000000) >> 24;//размер
+					streams[indexVideo].Data[sampleIndexOld + 7] = ((lengthSample - 10) & 0xFF0000) >> 16;  //размер
+					streams[indexVideo].Data[sampleIndexOld + 8] = ((lengthSample - 10) & 0xFF00) >> 8;     //размер
+					streams[indexVideo].Data[sampleIndexOld + 9] = (lengthSample - 10) & 0xFF;              //размер
+			
 					//запишем длину в массив
 					sizeSamplesV[sizeSamplesV.length] = lengthSample;
 					videoLength += lengthSample;
@@ -565,6 +572,13 @@ function ExtractStreams(fileByte)
 	{
 		if (lengthSample != 0)
 		{
+			//подправим заголовки h264 семплов
+					streams[indexVideo].Data[sampleIndexOld + 3] = 2;
+					streams[indexVideo].Data[sampleIndexOld + 6] = (lengthSample & 0xFF000000) >> 24;//размер
+					streams[indexVideo].Data[sampleIndexOld + 7] = (lengthSample & 0xFF0000) >> 16;  //размер
+					streams[indexVideo].Data[sampleIndexOld + 8] = (lengthSample & 0xFF00) >> 8;     //размер
+					streams[indexVideo].Data[sampleIndexOld + 9] = lengthSample & 0xFF;              //размер
+					
 			//запишем длину в массив
 			sizeSamplesV[sizeSamplesV.length] = lengthSample;
 			videoLength += lengthSample;
@@ -1132,6 +1146,645 @@ function ExtractStreams(fileByte)
 	
 	///соберём видео
 	
+	
+	stsdV[0] = 0;
+	stsdV[1] = 0;
+	stsdV[2] = 0;
+	stsdV[3] = 151;
+	stsdV[4] = 115;
+	stsdV[5] = 116;
+	stsdV[6] = 115;
+	stsdV[7] = 100;
+	stsdV[9] = 0;
+	stsdV[9] = 0;
+	stsdV[10] = 0;
+	stsdV[11] = 0;
+	stsdV[12] = 0;
+	stsdV[13] = 0;
+	stsdV[14] = 0;
+	stsdV[15] = 1;
+	stsdV[16] = 0;
+	stsdV[17] = 0;
+	stsdV[18] = 0;
+	stsdV[19] = 135;
+	stsdV[20] = 97;
+	stsdV[21] = 118;
+	stsdV[22] = 99;
+	stsdV[23] = 49;
+	stsdV[24] = 0;
+	stsdV[25] = 0;
+	stsdV[26] = 0;
+	stsdV[27] = 0;
+	stsdV[28] = 0;
+	stsdV[29] = 0;
+	stsdV[30] = 0;
+	stsdV[31] = 1;
+	stsdV[32] = 0;
+	stsdV[33] = 0;
+	stsdV[34] = 0;
+	stsdV[35] = 0;
+	stsdV[36] = 0;
+	stsdV[37] = 0;
+	stsdV[38] = 0;
+	stsdV[39] = 0;
+	stsdV[40] = 0;
+	stsdV[41] = 0;
+	stsdV[42] = 0;
+	stsdV[43] = 0;
+	stsdV[44] = 0;
+	stsdV[45] = 0;
+	stsdV[46] = 0;
+	stsdV[47] = 0;
+	stsdV[48] = 6;
+	stsdV[49] = 64;
+	stsdV[50] = 3;
+	stsdV[51] = 132;
+	stsdV[52] = 0;
+	stsdV[53] = 72;
+	stsdV[54] = 0;
+	stsdV[55] = 0;
+	stsdV[56] = 0;
+	stsdV[57] = 0;
+	stsdV[58] = 0;
+	stsdV[59] = 0;
+	stsdV[60] = 0;
+	stsdV[61] = 0;
+	stsdV[62] = 0;
+	stsdV[63] = 0;
+	stsdV[64] = 0;
+	stsdV[65] = 1;
+	stsdV[66] = 0;
+	stsdV[67] = 0;
+	stsdV[68] = 0;
+	stsdV[69] = 0;
+	stsdV[70] = 0;
+	stsdV[80] = 0;
+	stsdV[81] = 0;
+	stsdV[82] = 0;
+	stsdV[83] = 0;
+	stsdV[84] = 0;
+	stsdV[85] = 0;
+	stsdV[86] = 0;
+	stsdV[87] = 0;
+	stsdV[88] = 0;
+	stsdV[89] = 0;
+	stsdV[90] = 0;
+	stsdV[91] = 0;
+	stsdV[92] = 0;
+	stsdV[93] = 0;
+	stsdV[94] = 0;
+	stsdV[95] = 0;
+	stsdV[96] = 0;
+	stsdV[97] = 0;
+	stsdV[98] = 0;
+	stsdV[99] = 24;
+	stsdV[100] = 255;
+	stsdV[101] = 255;
+	stsdV[102] = 0;
+	stsdV[103] = 0;
+	stsdV[104] = 0;
+	stsdV[105] = 49;
+	stsdV[106] = 97;
+	stsdV[107] = 118;
+	stsdV[108] = 99;
+	stsdV[109] = 67;
+	stsdV[110] = 1;
+	stsdV[111] = 77;
+	stsdV[112] = 64;
+	stsdV[113] = 31;
+	stsdV[114] = 255;
+	stsdV[115] = 255;
+	stsdV[116] = 0;
+	stsdV[117] = 26;
+	stsdV[118] = 103;
+	stsdV[119] = 77;
+	stsdV[120] = 64;
+	stsdV[121] = 31;
+	stsdV[122] = 236;
+	stsdV[123] = 160;
+	stsdV[124] = 50;
+	stsdV[125] = 3;
+	stsdV[126] = 159;
+	stsdV[127] = 207;
+	stsdV[128] = 128;
+	stsdV[129] = 136;
+	stsdV[130] = 0;
+	stsdV[131] = 0;
+	stsdV[132] = 3;
+	stsdV[133] = 0;
+	stsdV[134] = 8;
+	stsdV[135] = 0;
+	stsdV[136] = 0;
+	stsdV[137] = 3;
+	stsdV[138] = 1;
+	stsdV[139] = 128;
+	stsdV[140] = 120;
+	stsdV[141] = 193;
+	stsdV[142] = 140;
+	stsdV[143] = 176;
+	stsdV[144] = 1;
+	stsdV[145] = 0;
+	stsdV[146] = 4;
+	stsdV[147] = 104;
+	stsdV[148] = 235;
+	stsdV[149] = 236;
+	stsdV[150] = 178;
+	
+	sttsV[0] = 0;//размер атома
+    sttsV[1] = 0;//размер атома
+	sttsV[2] = 0;//размер атома
+	sttsV[3] = 24;//размер атома
+	sttsV[4] = 115;//s
+	sttsV[5] = 116;//t
+	sttsV[6] = 116;//t
+	sttsV[7] = 115;//s
+	sttsV[8] = 0;//флаг
+	sttsV[9] = 0;//флаг
+	sttsV[10] = 0;//флаг
+	sttsV[11] = 0;//флаг
+	sttsV[12] = 0;//количество записей
+	sttsV[13] = 0;//количество записей
+	sttsV[14] = 0;//количество записей
+	sttsV[15] = 1;//количество записей
+	sttsV[16] = (sampleCountV & 0xFF000000) >> 24;//количество sample'ов
+	sttsV[17] = (sampleCountV & 0xFF0000) >> 16;  //количество sample'ов
+	sttsV[18] = (sampleCountV & 0xFF00) >> 8;     //количество sample'ов
+	sttsV[19] = (sampleCountV & 0xFF);              //количество sample'ов
+	sttsV[20] = 0;//продолжительность sample (delta)
+	sttsV[21] = 0;//продолжительность sample (delta)
+	sttsV[22] = 2;//продолжительность sample (delta)
+	sttsV[23] = 0;//продолжительность sample (delta)
+	
+	
+	
+	cttsVLength = 16 + sampleCountV * 8;
+	cttsV[0] = (cttsVLength & 0xFF000000) >> 24;//размер атома
+	cttsV[1] = (cttsVLength & 0xFF0000) >> 16;  //размер атома
+	cttsV[2] = (cttsVLength & 0xFF00) >> 8;     //размер атома
+	cttsV[3] = cttsVLength & 0xFF;              //размер атома
+	cttsV[4] = 99;//c
+	cttsV[5] = 116;//t
+	cttsV[6] = 116;//t
+	cttsV[7] = 115;//s
+	cttsV[8] = 0;//версия
+	cttsV[9] = 0;//флаг
+	cttsV[10] = 0;//флаг
+	cttsV[11] = 0;//флаг
+	cttsV[12] = (sampleCountV & 0xFF000000) >> 24;//количество sample'ов
+	cttsV[13] = (sampleCountV & 0xFF0000) >> 16;  //количество sample'ов
+	cttsV[14] = (sampleCountV & 0xFF00) >> 8;     //количество sample'ов
+	cttsV[15] = sampleCountV & 0xFF;              //количество sample'ов
+	var count = 1;
+	for (j = 0; j < PTSsV.length; j++)
+	{
+		if(PTSsV[j] > DTSsV[j])
+		{
+			cttsV[16 + (count - 1) * 8] = 0;//количество sample'ов
+			cttsV[16 + (count - 1) * 8 + 1] = 0;  //количество sample'ов
+			cttsV[16 + (count - 1) * 8 + 2] = 0;     //количество sample'ов
+			cttsV[16 + (count - 1) * 8 + 3] = 1;              //количество sample'ов
+			if (DTSsV[j] != 0)
+			{
+				var sampleDuration = (PTSsV[j] - DTSsV[j]) * 12288 / 90000;
+				cttsV[16 + (count - 1) * 8 + 4] = (sampleDuration & 0xFF000000) >> 24;//продолжительность семпла
+				cttsV[16 + (count - 1) * 8 + 5] = (sampleDuration & 0xFF0000) >> 16;  //продолжительность семпла
+				cttsV[16 + (count - 1) * 8 + 6] = (sampleDuration & 0xFF00) >> 8;     //продолжительность семпла
+				cttsV[16 + (count - 1) * 8 + 7] = sampleDuration & 0xFF;              //продолжительность семпла
+			}
+			else
+			{
+				cttsV[16 + (count - 1) * 8 + 4] = 0;//продолжительность семпла
+				cttsV[16 + (count - 1) * 8 + 5] = 0;  //продолжительность семпла
+				cttsV[16 + (count - 1) * 8 + 6] = 0;     //продолжительность семпла
+				cttsV[16 + (count - 1) * 8 + 7] = 0;              //продолжительность семпла
+			}
+			count++;
+		}
+	}
+	
+	
+	stscV[0] = 0;//размер атома
+	stscV[1] = 0;//размер атома
+	stscV[2] = 0;//размер атома
+	stscV[3] = 28;//размер атома
+	stscV[4] = 115;//s
+	stscV[5] = 116;//t
+	stscV[6] = 115;//s
+	stscV[7] = 99;//c
+	stscV[8] = 0;//флаг
+	stscV[9] = 0;//флаг
+	stscV[10] = 0;//флаг
+	stscV[11] = 0;//флаг
+	stscV[12] = 0;//количество записей
+	stscV[13] = 0;//количество записей
+	stscV[14] = 0;//количество записей
+	stscV[15] = 1;//количество записей
+	stscV[16] = 0;//первый кусок
+	stscV[17] = 0;//первый кусок
+	stscV[18] = 0;//первый кусок
+	stscV[19] = 1;//первый кусок
+	stscV[20] = (sampleCountV & 0xFF000000) >> 24;//количество sample'ов в куске
+	stscV[21] = (sampleCountV & 0xFF0000) >> 16;  //количество sample'ов в куске
+	stscV[22] = (sampleCountV & 0xFF00) >> 8;     //количество sample'ов в куске
+	stscV[23] = sampleCountV & 0xFF;              //количество sample'ов в куске
+	stscV[24] = 0;//ID sample
+	stscV[25] = 0;//ID sample
+	stscV[26] = 0;//ID sample
+	stscV[27] = 1;//ID sample
+	
+	
+	var stszSizeV = 20 + sampleCountV * 4;
+	stszV[0] = (stszSizeV & 0xFF000000) >> 24;//размер атома
+	stszV[1] = (stszSizeV & 0xFF0000) >> 16;  //размер атома
+	stszV[2] = (stszSizeV & 0xFF00) >> 8;     //размер атома
+	stszV[3] = stszSizeV & 0xFF;              //размер атома
+	stszV[4] = 115;//s
+	stszV[5] = 116;//t
+	stszV[6] = 115;//s
+	stszV[7] = 122;//z
+	stszV[8] = 0;//версия
+	stszV[9] = 0;//версия
+	stszV[10] = 0;//версия
+	stszV[11] = 0;//версия
+	stszV[12] = 0;//флаг
+	stszV[13] = 0;//флаг
+	stszV[14] = 0;//флаг
+	stszV[15] = 0;//флаг
+	stszV[16] = (sampleCountV & 0xFF000000) >> 24;//количество sample'ов
+	stszV[17] = (sampleCountV & 0xFF0000) >> 16;  //количество sample'ов
+	stszV[18] = (sampleCountV & 0xFF00) >> 8;     //количество sample'ов
+	stszV[19] = sampleCountV & 0xFF;              //количество sample'ов
+	for (j = 0; j < sizeSamplesV.length; j++)
+	{
+		stszV[20 + j * 4] = (sizeSamplesV[j] & 0xFF000000) >> 24;    //размер sample'а
+		stszV[20 + j * 4 + 1] = (sizeSamplesV[j] & 0xFF0000) >> 16;  //размер sample'а
+		stszV[20 + j * 4 + 2] = (sizeSamplesV[j] & 0xFF00) >> 8;     //размер sample'а
+		stszV[20 + j * 4 + 3] = sizeSamplesV[j] & 0xFF;              //размер sample'а
+	}
+	
+
+	stcoV[0] = 0;//размер атома
+	stcoV[1] = 0;  //размер атома
+	stcoV[2] = 0;     //размер атома
+	stcoV[3] = 20;              //размер атома
+	stcoV[4] = 115;//s
+	stcoV[5] = 116;//t
+	stcoV[6] = 99;//c
+	stcoV[7] = 111;//o
+	stcoV[8] = 0;//флаг
+	stcoV[9] = 0;//флаг
+	stcoV[10] = 0;//флаг
+	stcoV[11] = 0;//флаг
+	stcoV[12] = 0;//число кусков
+	stcoV[13] = 0;//число кусков
+	stcoV[14] = 0;//число кусков
+	stcoV[15] = 1;//число кусков
+	stcoV[16] = ((ftyp.length + free.length + audioLength + 8) & 0xFF000000) >> 24;//указатель на начало данных
+	stcoV[17] = ((ftyp.length + free.length + audioLength + 8) & 0xFF0000) >> 16;  //указатель на начало данных
+	stcoV[18] = ((ftyp.length + free.length + audioLength + 8) & 0xFF00) >> 8;     //указатель на начало данных
+	stcoV[19] = (ftyp.length + free.length + audioLength + 8) & 0xFF;              //указатель на начало данных
+	
+	
+	//соберём stbl
+	var stblLengthV = 8 + stsdV.length + sttsV.length + cttsV.length + stscV.length + stszV.length + stcoV.length;
+	stblV = new Uint8Array(stblLengthV);
+	stblV[0] = (stblLengthV & 0xFF000000) >> 24;//размер атома
+	stblV[1] = (stblLengthV & 0xFF0000) >> 16;  //размер атома
+	stblV[2] = (stblLengthV & 0xFF00) >> 8;     //размер атома
+	stblV[3] = stblLengthV & 0xFF;              //размер атома
+	stblV[4] = 115;//s
+	stblV[5] = 116;//t
+	stblV[6] = 98;//b
+	stblV[7] = 108;//l
+	stblV.set(stsdV, 8);
+	stblV.set(sttsV, 8 + stsdV.length);
+	stblV.set(cttsV, 8 + stsdV.length + sttsV.length);
+	stblV.set(stscV, 8 + stsdV.length + sttsV.length + cttsV.length);
+	stblV.set(stszV, 8 + stsdV.length + sttsV.length + cttsV.length + stscV.length);
+	stblV.set(stcoV, 8 + stsdV.length + sttsV.length + cttsV.length + stscV.length + stszV.length);
+	
+	
+	dinfV[0] = 0;
+	dinfV[1] = 0;
+	dinfV[2] = 0;
+	dinfV[3] = 36;
+	dinfV[4] = 100;
+	dinfV[5] = 105;
+	dinfV[6] = 110;
+	dinfV[7] = 102;
+	dinfV[9] = 0;
+	dinfV[9] = 0;
+	dinfV[10] = 0;
+	dinfV[11] = 28;
+	dinfV[12] = 100;
+	dinfV[13] = 114;
+	dinfV[14] = 101;
+	dinfV[15] = 102;
+	dinfV[16] = 0;
+	dinfV[17] = 0;
+	dinfV[18] = 0;
+	dinfV[19] = 0;
+	dinfV[20] = 0;
+	dinfV[21] = 0;
+	dinfV[22] = 0;
+	dinfV[23] = 1;
+	dinfV[24] = 0;
+	dinfV[25] = 0;
+	dinfV[26] = 0;
+	dinfV[27] = 12;
+	dinfV[28] = 117;
+	dinfV[29] = 114;
+	dinfV[30] = 108;
+	dinfV[31] = 32;
+	dinfV[32] = 0;
+	dinfV[33] = 0;
+	dinfV[34] = 0;
+	dinfV[35] = 1;
+	
+	vmhdV[0] = 0;
+	vmhdV[1] = 0;
+	vmhdV[2] = 0;
+	vmhdV[3] = 20;
+	vmhdV[4] = 118;
+	vmhdV[5] = 109;
+	vmhdV[6] = 104;
+	vmhdV[7] = 100;
+	vmhdV[9] = 0;
+	vmhdV[9] = 0;
+	vmhdV[10] = 0;
+	vmhdV[11] = 1;
+	vmhdV[12] = 0;
+	vmhdV[13] = 0;
+	vmhdV[14] = 0;
+	vmhdV[15] = 0;
+	vmhdV[16] = 0;
+	vmhdV[17] = 0;
+	vmhdV[18] = 0;
+	vmhdV[19] = 0;
+	
+	//соберём minf
+	var minfLengthV = 8 + vmhdV.length + dinfV.length + stblV.length;
+	minfV = new Uint8Array(minfLengthV);
+	minfV[0] = (minfLengthV & 0xFF000000) >> 24;//размер атома
+	minfV[1] = (minfLengthV & 0xFF0000) >> 16;//размер атома
+	minfV[2] = (minfLengthV & 0xFF00) >> 8;//размер атома
+	minfV[3] = minfLengthV & 0xFF;//размер атома
+	minfV[4] = 109;//m
+	minfV[5] = 105;//i
+	minfV[6] = 110;//n
+	minfV[7] = 102;//f
+	minfV.set(vmhdV, 8);
+	minfV.set(dinfV, 8 + vmhdV.length);
+	minfV.set(stblV, 8 + vmhdV.length + dinfV.length);
+	
+	hdlrV[0] = 0;
+	hdlrV[1] = 0;
+	hdlrV[2] = 0;
+	hdlrV[3] = 45;
+	hdlrV[4] = 104;
+	hdlrV[5] = 100;
+	hdlrV[6] = 108;
+	hdlrV[7] = 114;
+	hdlrV[9] = 0;
+	hdlrV[9] = 0;
+	hdlrV[10] = 0;
+	hdlrV[11] = 0;
+	hdlrV[12] = 0;
+	hdlrV[13] = 0;
+	hdlrV[14] = 0;
+	hdlrV[15] = 0;
+	hdlrV[16] = 118;
+	hdlrV[17] = 105;
+	hdlrV[18] = 100;
+	hdlrV[19] = 101;
+	hdlrV[20] = 0;
+	hdlrV[21] = 0;
+	hdlrV[22] = 0;
+	hdlrV[23] = 0;
+	hdlrV[24] = 0;
+	hdlrV[25] = 0;
+	hdlrV[26] = 0;
+	hdlrV[27] = 0;
+	hdlrV[28] = 0;
+	hdlrV[29] = 0;
+	hdlrV[30] = 0;
+	hdlrV[31] = 0;
+	hdlrV[32] = 86;
+	hdlrV[33] = 105;
+	hdlrV[34] = 100;
+	hdlrV[35] = 101;
+	hdlrV[36] = 111;
+	hdlrV[37] = 72;
+	hdlrV[38] = 97;
+	hdlrV[39] = 110;
+	hdlrV[40] = 100;
+	hdlrV[41] = 108;
+	hdlrV[42] = 101;
+	hdlrV[43] = 114;
+	hdlrV[44] = 0;
+	
+	mdhdV[0] = 0;//размер атома
+	mdhdV[1] = 0;//размер атома
+	mdhdV[2] = 0;//размер атома
+	mdhdV[3] = 32;//размер атома
+	mdhdV[4] = 109;//m
+	mdhdV[5] = 100;//d
+	mdhdV[6] = 104;//h
+	mdhdV[7] = 100;//d
+	mdhdV[8] = 0;//версия
+	mdhdV[9] = 0;//флаг
+	mdhdV[10] = 0;//флаг
+	mdhdV[11] = 0;//флаг
+	mdhdV[12] = 0;//время создания
+	mdhdV[13] = 0;//время создания
+	mdhdV[14] = 0;//время создания
+	mdhdV[15] = 0;//время создания
+	mdhdV[16] = 0;//время изменения
+	mdhdV[17] = 0;//время изменения
+	mdhdV[18] = 0;//время изменения
+	mdhdV[19] = 0;//время изменения
+	mdhdV[20] = 0;//time scale
+	mdhdV[21] = 0;//time scale
+	mdhdV[22] = 48;//time scale 12288
+	mdhdV[23] = 0;//time scale 12288
+	mdhdV[24] = ((sampleCountV * 512) & 0xFF000000) >> 24;
+	mdhdV[25] = ((sampleCountV * 512) & 0xFF0000) >> 16;
+	mdhdV[26] = ((sampleCountV * 512) & 0xFF00) >> 8;
+	mdhdV[27] = (sampleCountV * 512) & 0xFF;
+	mdhdV[28] = 85;//язык
+	mdhdV[29] = 196;//язык
+	mdhdV[30] = 0;//Quality
+	mdhdV[31] = 0;//Quality
+	
+	//соберём mdia
+	var mdiaLengthV = 8 + mdhdV.length + hdlrV.length + minfV.length;
+	mdiaV = new Uint8Array(mdiaLengthV);
+	mdiaV[0] = (mdiaLengthV & 0xFF000000) >> 24;//размер атома
+	mdiaV[1] = (mdiaLengthV & 0xFF0000) >> 16;//размер атома
+	mdiaV[2] = (mdiaLengthV & 0xFF00) >> 8;//размер атома
+	mdiaV[3] = mdiaLengthV & 0xFF;//размер атома
+	mdiaV[4] = 109;//m
+	mdiaV[5] = 100;//d
+	mdiaV[6] = 105;//i
+	mdiaV[7] = 97;//a
+	mdiaV.set(mdhdV, 8);
+	mdiaV.set(hdlrV, 8 + mdhdV.length);
+	mdiaV.set(minfV, 8 + mdhdV.length + hdlrV.length);
+	
+	
+	var videoDuration = sampleCountV * 512 * 1000 / 12288;
+	elstV[0] = 0;//размер атома
+	elstV[1] = 0;//размер атома
+	elstV[2] = 0;//размер атома
+	elstV[3] = 28;//размер атома
+	elstV[4] = 101;//e
+	elstV[5] = 108;//l
+	elstV[6] = 115;//s
+	elstV[7] = 116;//t
+	elstV[8] = 0;//версия
+	elstV[9] = 0;//флаг
+	elstV[10] = 0;//флаг
+	elstV[11] = 0;//флаг
+	elstV[12] = 0;//количество
+	elstV[13] = 0;//количество
+	elstV[14] = 0;//количество
+	elstV[15] = 1;//количество
+	elstV[16] = (videoDuration & 0xFF000000) >> 24;//длительность видео
+	elstV[17] = (videoDuration & 0xFF0000) >> 16;//длительность видео
+	elstV[18] = (videoDuration & 0xFF00) >> 8;//длительность видео
+	elstV[19] = videoDuration & 0xFF;//длительность видео
+	elstV[20] = 0;//начальное время
+	elstV[21] = 0;//начальное время
+	elstV[22] = 0;//начальное время
+	elstV[23] = 0;//начальное время
+	elstV[24] = 0;//скорость видео 01.00
+	elstV[25] = 1;//скорость видео 01.00
+	elstV[26] = 0;//скорость видео 01.00
+	elstV[27] = 0;//скорость видео 01.00
+
+	//соберём edts
+	var edtsLengthV = 8 + elstV.length;
+	edtsV = new Uint8Array(edtsLengthV);
+	edtsV[0] = (edtsLengthV & 0xFF000000) >> 24;//размер атома
+	edtsV[1] = (edtsLengthV & 0xFF0000) >> 16;//размер атома
+	edtsV[2] = (edtsLengthV & 0xFF00) >> 8;//размер атома
+	edtsV[3] = edtsLengthV & 0xFF;//размер атома
+	edtsV[4] = 101;//e
+	edtsV[5] = 100;//d
+	edtsV[6] = 116;//t
+	edtsV[7] = 115;//s
+	edtsV.set(elstV, 8);
+	
+	
+	tkhdV[0] = 0;//размер атома
+	tkhdV[1] = 0;//размер атома
+	tkhdV[2] = 0;//размер атома
+	tkhdV[3] = 92;//размер атома
+	tkhdV[4] = 116;//t
+	tkhdV[5] = 107;//k
+	tkhdV[6] = 104;//h
+	tkhdV[7] = 100;//d
+	tkhdV[8] = 0;//версия
+	tkhdV[9] = 0;//флаги
+	tkhdV[10] = 0;//флаги
+	tkhdV[11] = 15;//флаги
+	tkhdV[12] = 0;//время создания
+	tkhdV[13] = 0;//время создания
+	tkhdV[14] = 0;//время создания
+	tkhdV[15] = 0;//время создания
+	tkhdV[16] = 0;//время изменения
+	tkhdV[17] = 0;//время изменения
+	tkhdV[18] = 0;//время изменения
+	tkhdV[19] = 0;//время изменения
+	tkhdV[20] = 0;//track ID
+	tkhdV[21] = 0;//track ID
+	tkhdV[22] = 0;//track ID
+	tkhdV[23] = 2;//track ID
+	tkhdV[24] = 0;//зарезервировано
+	tkhdV[25] = 0;//зарезервировано
+	tkhdV[26] = 0;//зарезервировано
+	tkhdV[27] = 0;//зарезервировано
+	tkhdV[28] = (videoDuration & 0xFF000000) >> 24;//длительность аудио
+	tkhdV[29] = (videoDuration & 0xFF0000) >> 16;//длительность аудио
+	tkhdV[30] = (videoDuration & 0xFF00) >> 8;//длительность аудио
+	tkhdV[31] = videoDuration & 0xFF;//длительность аудио
+	tkhdV[32] = 0;//зарезервировано
+	tkhdV[33] = 0;//зарезервировано
+	tkhdV[34] = 0;//зарезервировано
+	tkhdV[35] = 0;//зарезервировано
+	tkhdV[36] = 0;//зарезервировано
+	tkhdV[37] = 0;//зарезервировано
+	tkhdV[38] = 0;//зарезервировано
+	tkhdV[39] = 0;//зарезервировано
+	tkhdV[40] = 0;//слой
+	tkhdV[41] = 0;//слой
+	tkhdV[42] = 0;//тип данных (0 - видео, 1 - аудио, 2 - субтитры)
+	tkhdV[43] = 0;//тип данных (0 - видео, 1 - аудио, 2 - субтитры)
+	tkhdV[44] = 0;//громкость 0.0
+	tkhdV[45] = 0;//громкость 0.0
+	tkhdV[46] = 0;//зарезервировано
+	tkhdV[47] = 0;//зарезервировано
+	tkhdV[48] = 0;//матрица
+	tkhdV[49] = 1;//матрица
+	tkhdV[50] = 0;//матрица
+	tkhdV[51] = 0;//матрица
+	tkhdV[52] = 0;//матрица
+	tkhdV[53] = 0;//матрица
+	tkhdV[54] = 0;//матрица
+	tkhdV[55] = 0;//матрица
+	tkhdV[56] = 0;//матрица
+	tkhdV[57] = 0;//матрица
+	tkhdV[58] = 0;//матрица
+	tkhdV[59] = 0;//матрица
+	tkhdV[60] = 0;//матрица
+	tkhdV[61] = 0;//матрица
+	tkhdV[62] = 0;//матрица
+	tkhdV[63] = 0;//матрица
+	tkhdV[64] = 0;//матрица
+	tkhdV[65] = 1;//матрица
+	tkhdV[66] = 0;//матрица
+	tkhdV[67] = 0;//матрица
+	tkhdV[68] = 0;//матрица
+	tkhdV[69] = 0;//матрица
+	tkhdV[70] = 0;//матрица
+	tkhdV[71] = 0;//матрица
+	tkhdV[72] = 0;//матрица
+	tkhdV[73] = 0;//матрица
+	tkhdV[74] = 0;//матрица
+	tkhdV[75] = 0;//матрица
+	tkhdV[76] = 0;//матрица
+	tkhdV[77] = 0;//матрица
+	tkhdV[78] = 0;//матрица
+	tkhdV[79] = 0;//матрица
+	tkhdV[80] = 64;//матрица
+	tkhdV[81] = 0;//матрица
+	tkhdV[82] = 0;//матрица
+	tkhdV[83] = 0;//матрица
+	tkhdV[84] = 6;//ширина
+	tkhdV[85] = 64;//ширина
+	tkhdV[86] = 0;//ширина
+	tkhdV[87] = 0;//ширина
+	tkhdV[88] = 3;//высота
+	tkhdV[89] = 132;//высота
+	tkhdV[90] = 0;//высота
+	tkhdV[91] = 0;//высота
+
+	//соберём trak
+	var trakLengthV = 8 + tkhdV.length + edtsV.length + mdiaV.length;
+	trakV = new Uint8Array(trakLengthV);
+	trakV[0] = (trakLengthV & 0xFF000000) >> 24;//размер атома
+	trakV[1] = (trakLengthV & 0xFF0000) >> 16;//размер атома
+	trakV[2] = (trakLengthV & 0xFF00) >> 8;//размер атома
+	trakV[3] = trakLengthV & 0xFF;//размер атома
+	trakV[4] = 116;//t
+	trakV[5] = 114;//r
+	trakV[6] = 97;//a
+	trakV[7] = 107;//k
+	trakV.set(tkhdV, 8, tkhdV.length);
+	trakV.set(edtsV, 8 + tkhdV.length, edtsV.length);
+	trakV.set(mdiaV, 8 + tkhdV.length + edtsV.length, mdiaV.length);
+	
+	
 	///
 	
 	//соберём аудио и видео вместе в moov
@@ -1275,9 +1928,8 @@ function ExtractStreams(fileByte)
 	
 	
 	
-	
 	var DT1 = new Date();
-	alert("Время обработки: " + (DT1 - DT0) + " мс");
+	//alert("Время обработки: " + (DT1 - DT0) + " мс");
 	
 	//отладочный код создания файла чистого потока и скачивания этого файла браузером (работает безотказно в опере)
 	var ddd = new Uint8Array(mp4CurrentSize);
@@ -1286,7 +1938,14 @@ function ExtractStreams(fileByte)
 		ddd[i] = mp4[i];
 	}	
 	
-	var saveData = (function () {
+	var blob = new Blob([ddd], {type: "application/octet-stream"}),
+    url = window.URL.createObjectURL(blob);
+	
+	document.getElementById('videoplayer').setAttribute('src', url);
+	document.getElementById('videoplayer').load();
+	document.getElementById('videoplayer').play();
+	
+	/*var saveData = (function () {
             var a = document.createElement("a");
             document.body.appendChild(a);
             a.style = "display: none";
@@ -1300,5 +1959,5 @@ function ExtractStreams(fileByte)
             window.URL.revokeObjectURL(url);
             };
         }());
-        saveData(ddd, "xxxxxx.mp4");
+        saveData(ddd, "xxxxxx.mp4");*/
 }
