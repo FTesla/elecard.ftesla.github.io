@@ -493,7 +493,7 @@ function ExtractStreams(fileByte)
 			//длина sample с заголовком
 			var lengthSample = len1 + len2 + len3;
 			
-			if(PTSsA[PTSDTSIndex] > DTSsA[PTSDTSIndex])
+			if(PTSsA[PTSDTSIndex] > DTSsA[PTSDTSIndex])// && sizeSamplesA.length < 467)
 			{
 				//запишем длину в массив
 				sizeSamplesA[sizeSamplesA.length] = lengthSample - 7;
@@ -538,10 +538,11 @@ function ExtractStreams(fileByte)
 			//длина sample
 			var lengthSample = j - sampleIndexOld;
 	
-			if(PTSsV[PTSDTSIndex] > DTSsV[PTSDTSIndex])
+			if (lengthSample != 0)
 			{
-				if (lengthSample != 0)
+				if(PTSsV[PTSDTSIndex] > DTSsV[PTSDTSIndex])
 				{
+				
 					//подправим заголовки h264 семплов
 					streams[indexVideo].Data[sampleIndexOld + 3] = 2;
 					streams[indexVideo].Data[sampleIndexOld + 6] = ((lengthSample - 10) & 0xFF000000) >> 24;//размер
@@ -559,9 +560,10 @@ function ExtractStreams(fileByte)
 					mp4.set(videoMP4, mp4CurrentSize);
 					mp4CurrentSize += videoMP4.length;
 				}
+				PTSDTSIndex++;
 			}
 			sampleIndexOld = j;
-			PTSDTSIndex++;
+			
 		}
 		j++;
 	}
@@ -573,11 +575,11 @@ function ExtractStreams(fileByte)
 		if (lengthSample != 0)
 		{
 			//подправим заголовки h264 семплов
-					streams[indexVideo].Data[sampleIndexOld + 3] = 2;
-					streams[indexVideo].Data[sampleIndexOld + 6] = (lengthSample & 0xFF000000) >> 24;//размер
-					streams[indexVideo].Data[sampleIndexOld + 7] = (lengthSample & 0xFF0000) >> 16;  //размер
-					streams[indexVideo].Data[sampleIndexOld + 8] = (lengthSample & 0xFF00) >> 8;     //размер
-					streams[indexVideo].Data[sampleIndexOld + 9] = lengthSample & 0xFF;              //размер
+			streams[indexVideo].Data[sampleIndexOld + 3] = 2;
+			streams[indexVideo].Data[sampleIndexOld + 6] = ((lengthSample - 10) & 0xFF000000) >> 24;//размер
+			streams[indexVideo].Data[sampleIndexOld + 7] = ((lengthSample - 10) & 0xFF0000) >> 16;  //размер
+			streams[indexVideo].Data[sampleIndexOld + 8] = ((lengthSample - 10) & 0xFF00) >> 8;     //размер
+			streams[indexVideo].Data[sampleIndexOld + 9] = (lengthSample - 10) & 0xFF;              //размер
 					
 			//запишем длину в массив
 			sizeSamplesV[sizeSamplesV.length] = lengthSample;
@@ -1145,8 +1147,6 @@ function ExtractStreams(fileByte)
 	
 	
 	///соберём видео
-	
-	
 	stsdV[0] = 0;
 	stsdV[1] = 0;
 	stsdV[2] = 0;
@@ -1204,7 +1204,7 @@ function ExtractStreams(fileByte)
 	stsdV[54] = 0;
 	stsdV[55] = 0;
 	stsdV[56] = 0;
-	stsdV[57] = 0;
+	stsdV[57] = 72;
 	stsdV[58] = 0;
 	stsdV[59] = 0;
 	stsdV[60] = 0;
@@ -1253,7 +1253,7 @@ function ExtractStreams(fileByte)
 	stsdV[112] = 64;
 	stsdV[113] = 31;
 	stsdV[114] = 255;
-	stsdV[115] = 255;
+	stsdV[115] = 225;
 	stsdV[116] = 0;
 	stsdV[117] = 26;
 	stsdV[118] = 103;
@@ -1944,6 +1944,7 @@ function ExtractStreams(fileByte)
 	document.getElementById('videoplayer').setAttribute('src', url);
 	document.getElementById('videoplayer').load();
 	document.getElementById('videoplayer').play();
+	
 	
 	/*var saveData = (function () {
             var a = document.createElement("a");

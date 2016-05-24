@@ -144,6 +144,7 @@ function GetPlaylists()
 				{
 					if(linkToPlaylists.substr(-3) == '.ts')
 					{
+						timeStart = Date.now();
 						GetMediaFile(linkToPlaylists);
 					}
 					else
