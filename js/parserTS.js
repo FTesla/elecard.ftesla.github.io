@@ -106,12 +106,15 @@ function ExtractStreams(fileByte)
 						var byteHeadPes = fileByte[i * 188 + 4 + lengthPointerData + 8 + 5];
                         PTS += (byteHeadPes & 0xFE) >> 1;
 						
-						if(streamID == 192)
+						if (streamID >= 192 &&
+							streamID <= 223)
 						{
 							PTSsA[PTSsA.length] = PTS;
 							DTSsA[DTSsA.length] = 0;
+							
 						}
-						if(streamID == 224)
+						if (streamID >= 224 &&
+							streamID <= 239)
 						{
 							PTSsV[PTSsV.length] = PTS;
 							DTSsV[DTSsV.length] = 0;
@@ -144,13 +147,15 @@ function ExtractStreams(fileByte)
 						byteHeadPes = fileByte[i * 188 + 4 + lengthPointerData + 8 + 10];
                         DTS += (byteHeadPes & 0xFE) >> 1;
 						
-						
-						if(streamID == 192)
+						if (streamID >= 192 &&
+							streamID <= 223)
 						{
 							PTSsA[PTSsA.length] = PTS;
 							DTSsA[DTSsA.length] = DTS;
+							
 						}
-						if(streamID == 224)
+						if (streamID >= 224 &&
+							streamID <= 239)
 						{
 							PTSsV[PTSsV.length] = PTS;
 							DTSsV[DTSsV.length] = DTS;
@@ -172,7 +177,7 @@ function ExtractStreams(fileByte)
 							fileByte[j + 2] == 255)
 						{
 							staffingLength = fileByte[j];
-							staffingBegin = j + 1;
+							staffingBegin = j;
 							j = j + 2;
 						}
 					}
@@ -202,7 +207,8 @@ function ExtractStreams(fileByte)
 					//проверка на "пустые" байты
 					if (staffingBegin != 0 &&
 						staffingEnd != 0 &&
-						staffingLength + 1 == staffingEnd - staffingBegin)
+						staffingLength == staffingEnd - staffingBegin &&
+						staffingLength > 2)
 					{
 						//есть "пустые" байты
 						//добавляем полезные данные из TS пакета в чистый поток
@@ -235,7 +241,8 @@ function ExtractStreams(fileByte)
 					//проверка на "пустые" байты
 					if (staffingBegin != 0 &&
 						staffingEnd != 0 &&
-						staffingLength + 1 == staffingEnd - staffingBegin)
+						staffingLength == staffingEnd - staffingBegin &&
+						staffingLength > 2)
 					{
 						//есть "пустые" байты
 						//добавляем полезные данные из TS пакета в чистый поток
@@ -265,8 +272,6 @@ function ExtractStreams(fileByte)
 				}
 			}
 
-
-
 			//если пакет TS без PES заголовка
 			if (flagBeginData == 0)
 			{
@@ -288,7 +293,7 @@ function ExtractStreams(fileByte)
 							fileByte[j + 2] == 255)
 						{
 							staffingLength = fileByte[j];
-							staffingBegin = j + 1;
+							staffingBegin = j;
 							j = j + 2;
 						}
 					}
@@ -318,7 +323,8 @@ function ExtractStreams(fileByte)
 					//проверка на "пустые" байты
 					if (staffingBegin != 0 &&
 						staffingEnd != 0 &&
-						staffingLength + 1 == staffingEnd - staffingBegin)
+						staffingLength == staffingEnd - staffingBegin &&
+						staffingLength > 2)
 					{
 						//есть "пустые" байты
 						//добавляем полезные данные из TS пакета в чистый поток
@@ -350,8 +356,6 @@ function ExtractStreams(fileByte)
 		}	
 	}
 
-	
-	
 
 	//создадим mp4
 	var mp4 = new Uint8Array(fileByte.length);
@@ -399,7 +403,23 @@ function ExtractStreams(fileByte)
 	var stscV = new Array();
 	var stszV = new Array();
 	var stcoV = new Array();
-
+	
+	var PTSsVSort = new Array();
+	var audioDurationTS = 0;//длительность видео в единицах TS
+	var audioDurationMilliseconds = 0;//длительность видео в миллисекундах
+	var audioDelta = 1024;
+	var audioDurationMDHD = 0;//количество семплов * делта
+	var audioTimeScaleMDHD = 0;//videoDurationMDHD / длительность видео в секундах
+	var audioRatioDelta = 0; //delta / длительность семпла TS
+	
+	var PTSsASort = new Array();
+	var videoDurationTS = 0;//длительность видео в единицах TS
+	var videoDurationMilliseconds = 0;//длительность видео в миллисекундах
+	var videoDelta = 512;
+	var videoDurationMDHD = 0;//количество семплов * делта
+	var videoTimeScaleMDHD = 0;//videoDurationMDHD / длительность видео в секундах
+	var videoRatioDelta = 0; //delta / длительность семпла TS
+	
 	ftyp[0] = 0;
 	ftyp[1] = 0;
 	ftyp[2] = 0;
@@ -486,6 +506,7 @@ function ExtractStreams(fileByte)
 		if (streams[indexAudio].Data[j] == 255 &&
 			(streams[indexAudio].Data[j + 1] & 0xF0) >> 4 == 15)
 		{
+			
 			var len1 = (streams[indexAudio].Data[j + 3] & 0x3) << 11;  //  | | | | | | |x|x|       | | | | | | | | |       | | | | | | | | |
 			var len2 = streams[indexAudio].Data[j + 4] << 3;           //  | | | | | | | | |       |x|x|x|x|x|x|x|x|       | | | | | | | | |
 			var len3 = (streams[indexAudio].Data[j + 5] & 0xE0) >> 5;  //  | | | | | | | | |       | | | | | | | | |       |x|x|x| | | | | |
@@ -493,9 +514,13 @@ function ExtractStreams(fileByte)
 			//длина sample с заголовком
 			var lengthSample = len1 + len2 + len3;
 			
-			if(PTSsA[PTSDTSIndex] > DTSsA[PTSDTSIndex])// && sizeSamplesA.length < 467)
+			if(PTSsA[PTSDTSIndex] > DTSsA[PTSDTSIndex])
 			{
-				//запишем длину в массив
+				PTSsASort[PTSsASort.length] = PTSsA[PTSDTSIndex];
+				
+			}
+			
+			//запишем длину в массив
 				sizeSamplesA[sizeSamplesA.length] = lengthSample - 7;
 				audioLength += lengthSample - 7;
 				
@@ -507,7 +532,8 @@ function ExtractStreams(fileByte)
 
 				mp4.set(audioMP4, mp4CurrentSize);
 				mp4CurrentSize += audioMP4.length;
-			}
+			
+			
 			j = j + lengthSample;
 			PTSDTSIndex++;
 		}
@@ -518,7 +544,7 @@ function ExtractStreams(fileByte)
 	}
 	sampleCountA = sizeSamplesA.length;
 			
-						
+
 	//подготовим видео (запишем размеры sample'ов)
 	var sizeSamplesV = new Array();
 	var videoLength = 0;
@@ -542,7 +568,7 @@ function ExtractStreams(fileByte)
 			{
 				if(PTSsV[PTSDTSIndex] > DTSsV[PTSDTSIndex])
 				{
-				
+					PTSsVSort[PTSsVSort.length] = PTSsV[PTSDTSIndex];
 					//подправим заголовки h264 семплов
 					streams[indexVideo].Data[sampleIndexOld + 3] = 2;
 					streams[indexVideo].Data[sampleIndexOld + 6] = ((lengthSample - 10) & 0xFF000000) >> 24;//размер
@@ -572,6 +598,7 @@ function ExtractStreams(fileByte)
 	var lengthSample = j - sampleIndexOld;
 	if(PTSsV[PTSDTSIndex] > DTSsV[PTSDTSIndex])
 	{
+		PTSsVSort[PTSsVSort.length] = PTSsV[PTSDTSIndex];
 		if (lengthSample != 0)
 		{
 			//подправим заголовки h264 семплов
@@ -600,6 +627,43 @@ function ExtractStreams(fileByte)
 	mp4[41] = ((audioLength + videoLength + 8) & 0xFF0000) >> 16;
 	mp4[42] = ((audioLength + videoLength + 8) & 0xFF00) >> 8;
 	mp4[43] = (audioLength + videoLength + 8) & 0xFF;
+	
+	
+	///вычислим параметры аудио и видео
+	//отсортируем PTS
+	PTSsASort.sort(compareNumeric);
+	
+	//найдём максмальное значение длительности TS 
+	var sampleDurationAudioMax = PTSsASort[1] - PTSsASort[0];
+	for(var j = 2; j < PTSsASort.length; j++)
+	{
+		if(sampleDurationAudioMax > PTSsASort[j] - PTSsASort[j - 1]) sampleDurationAudioMax = PTSsASort[j] - PTSsASort[j - 1];
+	}
+	
+	audioDurationTS = PTSsASort[PTSsASort.length - 1] - PTSsASort[0];//длительность видео в единицах TS
+	audioDurationMilliseconds = audioDurationTS * 1000 / 90000;//длительность видео в миллисекундах
+	audioDelta = 1024;
+	audioDurationMDHD = sampleCountA * audioDelta;//количество семплов * делта
+	audioTimeScaleMDHD = Math.round(audioDurationMDHD * 1000 / audioDurationMilliseconds);//videoDurationMDHD / длительность видео в секундах
+	audioRatioDelta = audioDelta / sampleDurationAudioMax; //delta / длительность семпла TS
+	
+	
+	//отсортируем PTS
+	PTSsVSort.sort(compareNumeric);
+	
+	//найдём максмальное значение длительности TS 
+	var sampleDurationVideoMax = PTSsVSort[1] - PTSsVSort[0];
+	for(var j = 2; j < PTSsVSort.length; j++)
+	{
+		if(sampleDurationVideoMax > PTSsVSort[j] - PTSsVSort[j - 1]) sampleDurationVideoMax = PTSsVSort[j] - PTSsVSort[j - 1];
+	}
+	
+	videoDurationTS = PTSsVSort[PTSsVSort.length - 1] - PTSsVSort[0];//длительность видео в единицах TS
+	videoDurationMilliseconds = videoDurationTS * 1000 / 90000;//длительность видео в миллисекундах
+	videoDelta = 512;
+	videoDurationMDHD = sampleCountV * videoDelta;//количество семплов * делта
+	videoTimeScaleMDHD = Math.round(videoDurationMDHD * 1000 / videoDurationMilliseconds);//videoDurationMDHD / длительность видео в секундах
+	videoRatioDelta = videoDelta / sampleDurationVideoMax; //delta / длительность семпла TS
 	
 	
 	//соберём аудио
@@ -965,14 +1029,14 @@ function ExtractStreams(fileByte)
 	mdhdA[17] = 0;//время изменения
 	mdhdA[18] = 0;//время изменения
 	mdhdA[19] = 0;//время изменения
-	mdhdA[20] = 0;//time scale
-	mdhdA[21] = 0;//time scale
-	mdhdA[22] = 187;//time scale 48000
-	mdhdA[23] = 128;//time scale 48000
-	mdhdA[24] = ((sampleCountA * 1024) & 0xFF000000) >> 24;
-	mdhdA[25] = ((sampleCountA * 1024) & 0xFF0000) >> 16;
-	mdhdA[26] = ((sampleCountA * 1024) & 0xFF00) >> 8;
-	mdhdA[27] = (sampleCountA * 1024) & 0xFF;
+	mdhdA[20] = ((audioTimeScaleMDHD) & 0xFF000000) >> 24;//time scale
+	mdhdA[21] = ((audioTimeScaleMDHD) & 0xFF0000) >> 16;//time scale
+	mdhdA[22] = ((audioTimeScaleMDHD) & 0xFF00) >> 8;//time scale
+	mdhdA[23] = (audioTimeScaleMDHD) & 0xFF;//time scale
+	mdhdA[24] = ((audioDurationMDHD) & 0xFF000000) >> 24;
+	mdhdA[25] = ((audioDurationMDHD) & 0xFF0000) >> 16;
+	mdhdA[26] = ((audioDurationMDHD) & 0xFF00) >> 8;
+	mdhdA[27] = (audioDurationMDHD) & 0xFF;
 	mdhdA[28] = 85;//язык
 	mdhdA[29] = 196;//язык
 	mdhdA[30] = 0;//Quality
@@ -1010,10 +1074,10 @@ function ExtractStreams(fileByte)
 	elstA[13] = 0;//количество
 	elstA[14] = 0;//количество
 	elstA[15] = 1;//количество
-	elstA[16] = (audioDuration & 0xFF000000) >> 24;//длительность аудио
-	elstA[17] = (audioDuration & 0xFF0000) >> 16;//длительность аудио
-	elstA[18] = (audioDuration & 0xFF00) >> 8;//длительность аудио
-	elstA[19] = audioDuration & 0xFF;//длительность аудио
+	elstA[16] = (audioDurationMilliseconds & 0xFF000000) >> 24;//длительность аудио
+	elstA[17] = (audioDurationMilliseconds & 0xFF0000) >> 16;//длительность аудио
+	elstA[18] = (audioDurationMilliseconds & 0xFF00) >> 8;//длительность аудио
+	elstA[19] = audioDurationMilliseconds & 0xFF;//длительность аудио
 	elstA[20] = 0;//начальное время
 	elstA[21] = 0;//начальное время
 	elstA[22] = 0;//начальное время
@@ -1064,10 +1128,10 @@ function ExtractStreams(fileByte)
 	tkhdA[25] = 0;//зарезервировано
 	tkhdA[26] = 0;//зарезервировано
 	tkhdA[27] = 0;//зарезервировано
-	tkhdA[28] = (audioDuration & 0xFF000000) >> 24;//длительность аудио
-	tkhdA[29] = (audioDuration & 0xFF0000) >> 16;//длительность аудио
-	tkhdA[30] = (audioDuration & 0xFF00) >> 8;//длительность аудио
-	tkhdA[31] = audioDuration & 0xFF;//длительность аудио
+	tkhdA[28] = (audioDurationMilliseconds & 0xFF000000) >> 24;//длительность аудио
+	tkhdA[29] = (audioDurationMilliseconds & 0xFF0000) >> 16;//длительность аудио
+	tkhdA[30] = (audioDurationMilliseconds & 0xFF00) >> 8;//длительность аудио
+	tkhdA[31] = audioDurationMilliseconds & 0xFF;//длительность аудио
 	tkhdA[32] = 0;//зарезервировано
 	tkhdA[33] = 0;//зарезервировано
 	tkhdA[34] = 0;//зарезервировано
@@ -1345,7 +1409,7 @@ function ExtractStreams(fileByte)
 			cttsV[16 + (count - 1) * 8 + 3] = 1;              //количество sample'ов
 			if (DTSsV[j] != 0)
 			{
-				var sampleDuration = (PTSsV[j] - DTSsV[j]) * 12288 / 90000;
+				var sampleDuration = Math.round((PTSsV[j] - DTSsV[j]) * videoRatioDelta);
 				cttsV[16 + (count - 1) * 8 + 4] = (sampleDuration & 0xFF000000) >> 24;//продолжительность семпла
 				cttsV[16 + (count - 1) * 8 + 5] = (sampleDuration & 0xFF0000) >> 16;  //продолжительность семпла
 				cttsV[16 + (count - 1) * 8 + 6] = (sampleDuration & 0xFF00) >> 8;     //продолжительность семпла
@@ -1603,14 +1667,14 @@ function ExtractStreams(fileByte)
 	mdhdV[17] = 0;//время изменения
 	mdhdV[18] = 0;//время изменения
 	mdhdV[19] = 0;//время изменения
-	mdhdV[20] = 0;//time scale
-	mdhdV[21] = 0;//time scale
-	mdhdV[22] = 48;//time scale 12288
-	mdhdV[23] = 0;//time scale 12288
-	mdhdV[24] = ((sampleCountV * 512) & 0xFF000000) >> 24;
-	mdhdV[25] = ((sampleCountV * 512) & 0xFF0000) >> 16;
-	mdhdV[26] = ((sampleCountV * 512) & 0xFF00) >> 8;
-	mdhdV[27] = (sampleCountV * 512) & 0xFF;
+	mdhdV[20] = ((videoTimeScaleMDHD) & 0xFF000000) >> 24;//time scale
+	mdhdV[21] = ((videoTimeScaleMDHD) & 0xFF0000) >> 16;//time scale
+	mdhdV[22] = ((videoTimeScaleMDHD) & 0xFF00) >> 8;//time scale
+	mdhdV[23] = (videoTimeScaleMDHD) & 0xFF;//time scale
+	mdhdV[24] = ((videoDurationMDHD) & 0xFF000000) >> 24;
+	mdhdV[25] = ((videoDurationMDHD) & 0xFF0000) >> 16;
+	mdhdV[26] = ((videoDurationMDHD) & 0xFF00) >> 8;
+	mdhdV[27] = (videoDurationMDHD) & 0xFF;
 	mdhdV[28] = 85;//язык
 	mdhdV[29] = 196;//язык
 	mdhdV[30] = 0;//Quality
@@ -1649,10 +1713,10 @@ function ExtractStreams(fileByte)
 	elstV[13] = 0;//количество
 	elstV[14] = 0;//количество
 	elstV[15] = 1;//количество
-	elstV[16] = (videoDuration & 0xFF000000) >> 24;//длительность видео
-	elstV[17] = (videoDuration & 0xFF0000) >> 16;//длительность видео
-	elstV[18] = (videoDuration & 0xFF00) >> 8;//длительность видео
-	elstV[19] = videoDuration & 0xFF;//длительность видео
+	elstV[16] = (videoDurationMilliseconds & 0xFF000000) >> 24;//длительность видео
+	elstV[17] = (videoDurationMilliseconds & 0xFF0000) >> 16;//длительность видео
+	elstV[18] = (videoDurationMilliseconds & 0xFF00) >> 8;//длительность видео
+	elstV[19] = videoDurationMilliseconds & 0xFF;//длительность видео
 	elstV[20] = 0;//начальное время
 	elstV[21] = 0;//начальное время
 	elstV[22] = 0;//начальное время
@@ -1704,10 +1768,10 @@ function ExtractStreams(fileByte)
 	tkhdV[25] = 0;//зарезервировано
 	tkhdV[26] = 0;//зарезервировано
 	tkhdV[27] = 0;//зарезервировано
-	tkhdV[28] = (videoDuration & 0xFF000000) >> 24;//длительность аудио
-	tkhdV[29] = (videoDuration & 0xFF0000) >> 16;//длительность аудио
-	tkhdV[30] = (videoDuration & 0xFF00) >> 8;//длительность аудио
-	tkhdV[31] = videoDuration & 0xFF;//длительность аудио
+	tkhdV[28] = (videoDurationMilliseconds & 0xFF000000) >> 24;//длительность аудио
+	tkhdV[29] = (videoDurationMilliseconds & 0xFF0000) >> 16;//длительность аудио
+	tkhdV[30] = (videoDurationMilliseconds & 0xFF00) >> 8;//длительность аудио
+	tkhdV[31] = videoDurationMilliseconds & 0xFF;//длительность аудио
 	tkhdV[32] = 0;//зарезервировано
 	tkhdV[33] = 0;//зарезервировано
 	tkhdV[34] = 0;//зарезервировано
@@ -1961,4 +2025,10 @@ function ExtractStreams(fileByte)
             };
         }());
         saveData(ddd, "xxxxxx.mp4");*/
+}
+
+function compareNumeric(a, b) 
+{
+  if (a > b) return 1;
+  if (a < b) return -1;
 }
