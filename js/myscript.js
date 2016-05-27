@@ -298,12 +298,15 @@ function GetPlaylist(link)
 						document.body.appendChild(newElem);
 												
 						var k = 0;//счтёчик закаченных файлов
+						//функция последовательной закачки файлов
 						(function() {
 							if (k < linksToMediaFiles.length) 
 							{
 								//семафор
-								if(loads == false)
+								if (loads == false &&
+									nextTS == true)
 								{
+									
 									timeStart = Date.now();
 
 									if(linksToMediaFiles[k].indexOf("http://") != -1)
@@ -340,6 +343,7 @@ function GetPlaylist(link)
 
 function GetMediaFile(link) 
 {
+	nextTS = false;
 	loads = true;
     var request = new XMLHttpRequest();
 

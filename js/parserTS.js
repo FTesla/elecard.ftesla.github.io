@@ -1,4 +1,12 @@
-﻿function Stream(PID, StreamID, Size)
+﻿var mp4Buffer1;
+var mp4Buffer2;
+var currentBuffer = 1;
+var mp4 = new Uint8Array();
+var mp4CurrentSize = 0;
+var nextTS = true;//семафор для обработки TS
+var one = true;//выполняется один раз
+
+function Stream(PID, StreamID, Size)
 {
 	this.PID = PID;
 	this.StreamID = StreamID;
@@ -358,8 +366,8 @@ function ExtractStreams(fileByte)
 
 
 	//создадим mp4
-	var mp4 = new Uint8Array(fileByte.length);
-	var mp4CurrentSize = 0;
+	mp4 = new Uint8Array(fileByte.length);
+	mp4CurrentSize = 0;
 	
 	//атомы
 	var ftyp = new Array();
@@ -631,7 +639,7 @@ function ExtractStreams(fileByte)
 	
 	///вычислим параметры аудио и видео
 	//отсортируем PTS
-	PTSsASort.sort(compareNumeric);
+	PTSsASort.sort(CompareNumeric);
 	
 	//найдём максмальное значение длительности TS 
 	var sampleDurationAudioMax = PTSsASort[1] - PTSsASort[0];
@@ -649,7 +657,7 @@ function ExtractStreams(fileByte)
 	
 	
 	//отсортируем PTS
-	PTSsVSort.sort(compareNumeric);
+	PTSsVSort.sort(CompareNumeric);
 	
 	//найдём максмальное значение длительности TS 
 	var sampleDurationVideoMax = PTSsVSort[1] - PTSsVSort[0];
@@ -1980,37 +1988,23 @@ function ExtractStreams(fileByte)
 	mp4.set(moov, mp4CurrentSize);
 	mp4CurrentSize += moov.length;
 	
-	
-	
-	
-	//alert(audioLength + " " + videoLength + " " + mp4CurrentSize);
-
-	//alert(PTSsA.length + " " + sampleCountA + " " + PTSsV.length + " " + sampleCountV);
-	
-	
-	
-	
-	
-	
 	var DT1 = new Date();
 	//alert("Время обработки: " + (DT1 - DT0) + " мс");
 	
+	if(one == true)
+	{
+		one = false;
+		SetBuffer();
+	}
+	
 	//отладочный код создания файла чистого потока и скачивания этого файла браузером (работает безотказно в опере)
-	var ddd = new Uint8Array(mp4CurrentSize);
+	/*var ddd = new Uint8Array(mp4CurrentSize);
 	for (var i = 0; i < ddd.length; i++)
 	{
 		ddd[i] = mp4[i];
 	}	
 	
-	var blob = new Blob([ddd], {type: "application/octet-stream"}),
-    url = window.URL.createObjectURL(blob);
-	
-	document.getElementById('videoplayer').setAttribute('src', url);
-	document.getElementById('videoplayer').load();
-	document.getElementById('videoplayer').play();
-	
-	
-	/*var saveData = (function () {
+	var saveData = (function () {
             var a = document.createElement("a");
             document.body.appendChild(a);
             a.style = "display: none";
@@ -2027,8 +2021,61 @@ function ExtractStreams(fileByte)
         saveData(ddd, "xxxxxx.mp4");*/
 }
 
-function compareNumeric(a, b) 
+//функция для сортировки
+function CompareNumeric(a, b) 
 {
   if (a > b) return 1;
   if (a < b) return -1;
+}
+
+function SetBuffer()
+{
+	if(nextTS == false)
+	{
+		if(currentBuffer == 1)
+		{
+			mp4Buffer1 = new Uint8Array(mp4CurrentSize);
+			for (var i = 0; i < mp4Buffer1.length; i++)
+			{
+				mp4Buffer1[i] = mp4[i];
+			}	
+			
+			var blob = new Blob([mp4Buffer1], {type: "application/octet-stream"}),
+			url = window.URL.createObjectURL(blob);
+
+			document.getElementById('videoplayer').setAttribute('src', url);
+			document.getElementById('videoplayer').load();
+			document.getElementById('videoplayer').play();
+
+			document.getElementById('videoplayer').addEventListener('ended', VideoFinishes, false);
+
+			currentBuffer = 2;
+		}
+		else
+		{
+			mp4Buffer2 = new Uint8Array(mp4CurrentSize);
+			for (var i = 0; i < mp4Buffer2.length; i++)
+			{
+				mp4Buffer2[i] = mp4[i];
+			}	
+			var blob = new Blob([mp4Buffer2], {type: "application/octet-stream"}),
+			url = window.URL.createObjectURL(blob);
+
+			document.getElementById('videoplayer').setAttribute('src', url);
+			document.getElementById('videoplayer').load();
+			document.getElementById('videoplayer').play();
+
+			document.getElementById('videoplayer').addEventListener('ended', VideoFinishes, false);
+			
+			currentBuffer = 1;
+		}
+	}
+	nextTS = true;
+}
+
+
+//функция для отслеживая окончания видео
+function VideoFinishes(e)
+{
+	SetBuffer();
 }
