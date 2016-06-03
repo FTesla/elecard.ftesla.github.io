@@ -295,6 +295,10 @@ function GetPlaylist(link)
 						newCell.width="200";
 						newCell.innerHTML="<b>скорость скачивания</b>";
 						
+						var newCell = newRow.insertCell(3);
+						newCell.width="250";
+						newCell.innerHTML="<b>время обработки одного кадра</b>";
+						
 						document.body.appendChild(newElem);
 												
 						var k = 0;//счтёчик закаченных файлов
